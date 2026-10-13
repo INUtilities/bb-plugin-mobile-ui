@@ -24,6 +24,8 @@ export const WORKSPACE_CHROME_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::before { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id][data-focused="true"]::before { box-shadow:0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), 0 0 8px color-mix(in oklab, var(--ring) 20%, transparent); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] [data-pane-header-focus-tab] { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim]) { border-radius:18px; overflow:clip; background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > [data-pane-focus-scrim] { inset:4px; border-radius:18px; }
 :root:not([data-bb-sidebar-phone]) [data-panel] > aside { isolation:isolate; border-radius:18px; border-color:transparent; background:transparent; }

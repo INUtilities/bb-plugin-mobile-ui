@@ -141,6 +141,16 @@ test("pane surfaces preserve the native transparent focus overlay", (t) => {
  assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-app-content-shell]')!).backgroundColor,"rgba(0, 0, 0, 0)");
 });
 
+test("active pane titles lose their fill while selected controls retain theirs", (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.querySelector('[data-app-content-shell]')!.innerHTML='<style>.selected{background:rgb(60,60,76)}</style><div data-split-pane-id="active" data-focused="true"><header><div data-pane-header-focus-tab class="selected">Title</div><button class="selected">Selected action</button></header></div>';
+ const button=doc.querySelector('header button')!,before=dom.window.getComputedStyle(button).backgroundColor;
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-pane-header-focus-tab]')!).backgroundColor,"rgba(0, 0, 0, 0)");
+ assert.equal(dom.window.getComputedStyle(button).backgroundColor,before);
+});
+
 test("pane shells are transparent without clearing controls or content cards", (t) => {
  const dom=page(),doc=dom.window.document;
  doc.querySelector('[data-app-content-shell]')!.innerHTML=`
