@@ -15,6 +15,7 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspaces] [role=status] { font-size:12px; color:var(--destructive); padding:0 8px; }
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:8px; }
+:root:not([data-bb-sidebar-phone]) :is([data-sidebar="inset"], [data-app-content-shell]) { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:8px; border-radius:18px; overflow:clip; border-color:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
@@ -92,9 +93,16 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
     if (disposed) return;
     const titlebar = doc.querySelector('[data-testid="app-window-title-bar"]');
     const target = titlebar ?? doc.querySelector("[data-app-content-shell]");
-    if (!target || bar.parentElement === target) return;
-    if (titlebar) { bar.style.flex = "1"; bar.style.minWidth = "0"; bar.style.padding = "0 8px"; target.append(bar); }
-    else { bar.style.flex = ""; bar.style.minWidth = ""; bar.style.padding = ""; target.prepend(bar); }
+    if (!target) return;
+    if (titlebar) {
+      const trailing = Array.from(titlebar.children).find(child => child.matches('[data-testid="window-right-panel-toggle"]') || child.querySelector('[data-testid="window-right-panel-toggle"]')) ?? null;
+      if (bar.parentElement === titlebar && bar.nextElementSibling === trailing) return;
+      bar.style.flex = "1"; bar.style.minWidth = "0"; bar.style.padding = "0 8px";
+      titlebar.insertBefore(bar, trailing);
+    } else {
+      if (bar.parentElement === target) return;
+      bar.style.flex = ""; bar.style.minWidth = ""; bar.style.padding = ""; target.prepend(bar);
+    }
   };
   const onPreferences = (event: Event): void => {
     const detail: unknown = Reflect.get(event, "detail");

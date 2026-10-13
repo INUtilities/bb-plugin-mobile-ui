@@ -15,6 +15,27 @@ test("mount creates one default tab and disposal leaves native history intact", 
  assert.equal(doc.querySelector<HTMLButtonElement>('[data-workspace-close]')?.disabled,true);
  stop();assert.equal(doc.querySelector('[data-sidebar-workspaces]'),null);assert.equal(dom.window.history.pushState,push);dom.window.close();
 });
+test("desktop titlebar keeps workspace tabs before the native right-panel toggle", (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.body.insertAdjacentHTML("beforeend",'<div data-testid="app-window-title-bar"><button id="left">Left</button><div id="right"><button data-testid="window-right-panel-toggle">Right</button></div></div>');
+ const titlebar=doc.querySelector('[data-testid="app-window-title-bar"]')!,right=doc.getElementById("right")!;
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ const bar=doc.querySelector('[data-sidebar-workspace-bar]')!;
+ assert.equal(bar.nextElementSibling,right);
+ stop();assert.deepEqual(Array.from(titlebar.children).map(e=>e.id),["left","right"]);
+});
+test("a remounted native titlebar control stays after the workspace tabs", async (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.body.insertAdjacentHTML("beforeend",'<div data-testid="app-window-title-bar"><button>Left</button></div>');
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ const bar=doc.querySelector('[data-sidebar-workspace-bar]')!;
+ const right=doc.createElement("div");right.innerHTML='<button data-testid="window-right-panel-toggle">Right</button>';
+ bar.before(right);
+ await new Promise(resolve=>setTimeout(resolve,550));
+ assert.equal(bar.nextElementSibling,right);
+});
 test("left navigation delegates splits to the host without reload or native storage writes", async (t) => {
  const dom=page(),doc=dom.window.document,push=dom.window.history.pushState;
  const original=doc.createElement("div");doc.querySelector('[data-app-content-shell]')!.append(original);
@@ -155,4 +176,12 @@ test("desktop at phone width retains workspace tabs", (t) => {
  const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
  t.after(()=>{stop();dom.window.close();});
  assert.equal(doc.querySelectorAll('[data-sidebar-workspaces]').length,1);
+});
+
+test("desktop clears the native inset and content shell backgrounds", (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.body.innerHTML='<style>[data-sidebar="inset"],[data-app-content-shell]{background:white}</style><main data-sidebar="inset"><div data-app-content-shell></div></main>';
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ for(const e of doc.querySelectorAll('[data-sidebar="inset"],[data-app-content-shell]')) assert.equal(dom.window.getComputedStyle(e).backgroundColor,"rgba(0, 0, 0, 0)");
 });
