@@ -1,4 +1,5 @@
 import { addWorkspace, closeWorkspace, contentForRoute, decodeWorkspaces, normalizeOpenMode, openPane, readNativeLayout, saveWorkspace, selectWorkspace, WORKSPACE_PREFERENCES_EVENT, type OpenMode, type WorkspaceSnapshot, type WorkspaceState } from "./workspaces.ts";
+import type { Device } from "./device.ts";
 
 const LAYOUT_KEY = "bb.splitLayout";
 const MAXIMIZED_KEY = "bb.splitLayout.maximizedPaneId";
@@ -13,22 +14,23 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspaces] button:disabled { cursor:default; opacity:.3; }
 [data-sidebar-workspaces] [role=status] { font-size:12px; color:var(--destructive); padding:0 8px; }
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
-:root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:8px; background:var(--sidebar); }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:8px 8px 8px 0; border-radius:18px; overflow:clip; border-color:transparent; }
+:root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:8px; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:8px; border-radius:18px; overflow:clip; border-color:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; border-color:transparent !important; background:transparent !important; }
-:root:not([data-bb-sidebar-phone]) [data-split-pane-id] > div { border-radius:18px; overflow:clip; background:var(--background); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim]) { border-radius:18px; overflow:clip; background:var(--background); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] > [data-pane-focus-scrim] { inset:4px; border-radius:18px; }
 :root:not([data-bb-sidebar-phone]) [data-panel] > aside { border-radius:18px; border-color:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-resize-grid-boundary] { background:transparent !important; }
-:root[data-bb-sidebar-phone] [data-sidebar-workspaces] button { min-height:32px; }
 `;
 export interface WorkspaceChromeOptions {
   pluginId: string;
+  device: Device;
   navigate?: (route: string) => void;
 }
 
 export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOptions): () => void {
   const view = doc.defaultView;
-  if (!view) return () => {};
+  if (!view || options.device !== "desktop") return () => {};
   const key = `${options.pluginId}:workspaces:v1`;
   const read = (name: string): string | null => { try { return view.sessionStorage.getItem(name) ?? view.localStorage.getItem(name); } catch { return null; } };
   const route = (): string => view.location.hash.startsWith("#/") ? view.location.hash.slice(1) : view.location.pathname + view.location.search;

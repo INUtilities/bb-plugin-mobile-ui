@@ -15,15 +15,15 @@ function WorkspaceBridge() {
     writeSidebarChrome(document, chrome);
     window.dispatchEvent(new Event(SIDEBAR_CHROME_EVENT));
   }, [chrome.device, chrome.orientation, chrome.viewport, chrome.hitTarget]);
+  useEffect(() => mountWorkspaceChrome(document, { pluginId, device: chrome.device }), [pluginId, chrome.device]);
   useRealtime(WORKSPACE_PREFERENCES_CHANNEL, (payload) => {
     if (payload !== null && typeof payload === "object") publish(Reflect.get(payload, "openMode"));
   });
-  useEffect(() => { if (!isLoading) publish(values?.[WORKSPACE_OPEN_MODE_SETTING]); }, [isLoading, values?.[WORKSPACE_OPEN_MODE_SETTING], pluginId]);
+  useEffect(() => { if (!isLoading) publish(values?.[WORKSPACE_OPEN_MODE_SETTING]); }, [isLoading, values?.[WORKSPACE_OPEN_MODE_SETTING], pluginId, chrome.device]);
   return null;
 }
 
 export default definePluginApp((app) => {
   app.contentScripts.register({ id: "sidebar-depth", mount: (context) => injectSidebarDepth(document, { pluginId: context.pluginId }) });
-  app.contentScripts.register({ id: "workspaces", mount: (context) => mountWorkspaceChrome(document, { pluginId: context.pluginId }) });
   app.slots.experimental_appOverlay({ id: "workspace-preferences", component: WorkspaceBridge });
 });
