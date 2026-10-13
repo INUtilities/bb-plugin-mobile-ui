@@ -36,7 +36,8 @@ export const WORKSPACE_CHROME_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::before { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
-:root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; box-shadow:0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), 0 0 8px color-mix(in oklab, var(--ring) 20%, transparent); opacity:0; transition:opacity 220ms cubic-bezier(.22,1,.36,1); }
+/* 여백 없는 창 가장자리에서도 선이 잘리거나 내부 배경에 가려지지 않게 한다. */
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { content:""; position:absolute; inset:4px; z-index:1; pointer-events:none; border-radius:18px; box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), 0 0 8px color-mix(in oklab, var(--ring) 20%, transparent); opacity:0; transition:opacity 220ms cubic-bezier(.22,1,.36,1); }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id][data-focused="true"]::after { opacity:1; }
 @media (prefers-reduced-motion: reduce) { :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { transition:none; } }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] [data-pane-header-focus-tab] { background:transparent; }
