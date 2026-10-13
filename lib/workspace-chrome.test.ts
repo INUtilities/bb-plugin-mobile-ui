@@ -119,6 +119,7 @@ test("phone never mounts workspace tabs or changes navigation and storage", (t) 
  t.after(()=>{stop();dom.window.close();});
  assert.equal(doc.querySelector('[data-sidebar-workspaces]'),null);
  assert.equal(doc.querySelector('[data-sidebar-workspace-style]'),null);
+ assert.equal(doc.querySelector('[data-sidebar-pane-drag-style]'),null);
  assert.equal(dom.window.history.pushState,push);
  assert.equal(dom.window.sessionStorage.length,0);stop();dom.window.close();
 });

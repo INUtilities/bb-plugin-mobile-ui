@@ -20,6 +20,7 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 
 - `lib/workspaces.ts`: 워크스페이스 상태, 저장값 검증, 네이티브 페인 트리의 검증.
 - `lib/workspace-chrome.ts`: 상단 탭, 네이티브 세션 저장소 연결, 네이티브 modifier-click 내비게이션과 여백 CSS.
+- `lib/pane-drag.ts`: 네이티브 페인 제목 드래그 중 아이콘 플레이스홀더. 콘텐츠 DOM을 떼지 않고 가리며, 네이티브 ghost의 생성·제거와 드롭·취소를 따라 정리한다. 사이드바 행 드래그와 제목 단순 클릭에는 적용하지 않는다.
 - `app.tsx`: 콘텐츠 스크립트와 기기·설정 브리지 등록.
 - `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
 - `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.

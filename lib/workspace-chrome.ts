@@ -1,5 +1,6 @@
 import { addWorkspace, closeWorkspace, contentForRoute, decodeWorkspaces, normalizeOpenMode, listPanes, readNativeLayout, saveWorkspace, selectWorkspace, WORKSPACE_PREFERENCES_EVENT, type OpenMode, type WorkspaceSnapshot, type WorkspaceState } from "./workspaces.ts";
 import type { Device } from "./device.ts";
+import { mountPaneDragPlaceholders } from "./pane-drag.ts";
 
 const LAYOUT_KEY = "bb.splitLayout";
 const MAXIMIZED_KEY = "bb.splitLayout.maximizedPaneId";
@@ -51,6 +52,7 @@ export interface WorkspaceChromeOptions {
 export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOptions): () => void {
   const view = doc.defaultView;
   if (!view || options.device !== "desktop") return () => {};
+  const stopPaneDrag = mountPaneDragPlaceholders(doc);
   const key = `${options.pluginId}:workspaces:v1`;
   const read = (name: string): string | null => { try { return view.sessionStorage.getItem(name) ?? view.localStorage.getItem(name); } catch { return null; } };
   const route = (): string => view.location.hash.startsWith("#/") ? view.location.hash.slice(1) : view.location.pathname + view.location.search;
@@ -157,6 +159,7 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
   render(); ensureBar(); checkpoint();
   return () => {
     checkpoint(); disposed = true;
+    stopPaneDrag();
     view.clearInterval(tick);
     doc.removeEventListener("click", onClick, true);
     view.removeEventListener(WORKSPACE_PREFERENCES_EVENT, onPreferences);
