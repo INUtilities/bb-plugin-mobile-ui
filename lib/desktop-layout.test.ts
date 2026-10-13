@@ -8,6 +8,6 @@ test("removed desktop card setting cannot override the new shell", () => {
   const depth=readFileSync(new URL("./sidebar-depth.ts",import.meta.url),"utf8");
   assert.doesNotMatch(server,/desktopLayout|DESKTOP_LAYOUT_SETTING/);
   assert.doesNotMatch(app,/DESKTOP_LAYOUT_EVENT|desktop-layout/);
-  assert.match(depth,/sidebarDepthCss\(false, readSidebarChrome\(doc\)\)/);
+  assert.match(depth,/chrome.device === "phone" \? sidebarDepthCss\(false, chrome\) : ""/);
   assert.doesNotMatch(depth,/fetchDesktopLayoutEnabled|readDesktopLayoutEnabled/);
 });

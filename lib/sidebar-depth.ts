@@ -862,16 +862,23 @@ export function injectSidebarDepth(
   style.id = STYLE_ID;
   const view = doc.defaultView;
   writeSidebarChrome(doc, options.chrome ?? readSidebarChrome(doc));
+  let stopTrack: () => void = () => {};
   const apply = (): void => {
+    stopTrack();
+    stopTrack = () => {};
     setDesktopCardLayout(false);
-    style.textContent = sidebarDepthCss(false, readSidebarChrome(doc));
-    syncSidebarDepth(doc);
+    const chrome = readSidebarChrome(doc);
+    // 위치 기반 밝기·스와이프 모션은 phone 전용이다. desktop에서 폭을 매 프레임 읽지 않는다.
+    style.textContent = chrome.device === "phone" ? sidebarDepthCss(false, chrome) : "";
+    if (chrome.device === "phone") {
+      syncSidebarDepth(doc);
+      stopTrack = trackSidebarDepth(doc);
+    }
   };
   apply();
   doc.head.append(style);
   const onChrome = (): void => { finger = null; heldHaptics = []; apply(); };
   view?.addEventListener?.(SIDEBAR_CHROME_EVENT, onChrome);
-  const stopTrack = trackSidebarDepth(doc);
   return () => {
     view?.removeEventListener?.(SIDEBAR_CHROME_EVENT, onChrome);
     stopTrack();

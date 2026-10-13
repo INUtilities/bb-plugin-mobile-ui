@@ -18,6 +18,9 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspaces] button:disabled { cursor:default; opacity:.3; }
 [data-sidebar-workspaces] [role=status] { font-size:12px; color:var(--destructive); padding:0 8px; }
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
+/* 레이아웃 폭을 보간하면 모든 페인의 줄바꿈·스크롤 크기를 매 프레임 다시 계산한다. */
+:root:not([data-bb-sidebar-phone]) :is([data-sidebar="gap"], [data-sidebar="panel"], [data-sidebar="collapsible-body"], [data-sidebar="inset"], [data-split-pane-id], [data-split-resize-grid-root] > [data-panel], [data-split-resize-grid-root] > [data-panel-resize-handle-id]) { transition:none !important; }
+:root:not([data-bb-sidebar-phone]) [data-split-resize-grid-root] { --panel-collapse-duration:0ms !important; }
 :root:not([data-bb-sidebar-phone]) [data-testid="app-layout-root"][data-framed] { --bb-window-frame-lip:0px; }
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:0; }
 :root:not([data-bb-sidebar-phone]) :is([data-sidebar="inset"], [data-app-content-shell]) { background:transparent; }

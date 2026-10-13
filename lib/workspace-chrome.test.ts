@@ -196,3 +196,21 @@ test("desktop clears the native inset and content shell backgrounds", (t) => {
  t.after(()=>{stop();dom.window.close();});
  for(const e of doc.querySelectorAll('[data-sidebar="inset"],[data-app-content-shell]')) assert.equal(dom.window.getComputedStyle(e).backgroundColor,"rgba(0, 0, 0, 0)");
 });
+
+test("desktop layout changes are instant without disabling content control transitions", (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.head.innerHTML='<style>[data-layout-motion] { transition:width .72s, flex-grow .22s, opacity .22s; } button { transition:background-color .15s; }</style>';
+ doc.body.innerHTML=`<div data-sidebar="gap" data-layout-motion></div>
+ <div data-sidebar="panel" data-layout-motion><div data-sidebar="collapsible-body" data-layout-motion></div></div>
+ <main data-sidebar="inset" data-layout-motion><div data-app-content-shell>
+  <div data-split-resize-grid-root>
+   <div data-panel data-layout-motion><div data-split-pane-id="chat" data-layout-motion><button>Composer</button></div></div>
+   <div data-panel-resize-handle-id="resize" data-layout-motion></div>
+   <div data-panel data-layout-motion><aside><div data-split-pane-id="plugin" data-layout-motion></div></aside></div>
+  </div>
+ </div></main>`;
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ for(const element of doc.querySelectorAll('[data-layout-motion]')) assert.equal(dom.window.getComputedStyle(element).transition,"none",element.outerHTML.slice(0,100));
+ assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-pane-id] button')!).transition,"background-color .15s");
+});

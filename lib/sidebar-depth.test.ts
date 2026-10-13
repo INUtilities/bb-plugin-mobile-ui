@@ -945,6 +945,8 @@ describe("sidebar finger release", () => {
 
 function mountFingerHarness(chrome = PHONE_CHROME as Parameters<typeof writeSidebarChrome>[1]) {
   const sent: unknown[] = [];
+  let frames = 0;
+  let cancelledFrames = 0;
   let time = 0;
   let translate = "0px";
   let blurCount = 0;
@@ -978,8 +980,8 @@ function mountFingerHarness(chrome = PHONE_CHROME as Parameters<typeof writeSide
       bb: { native: { post: (message: unknown) => sent.push(message), capabilities: ["haptic"] } },
       getComputedStyle: () => ({ translate, transform: "none" }),
       matchMedia: (query: string) => ({ matches: query.includes("max-width") }),
-      requestAnimationFrame: () => 1,
-      cancelAnimationFrame: () => {},
+      requestAnimationFrame: () => ++frames,
+      cancelAnimationFrame: () => { cancelledFrames += 1; },
       performance: { now: () => time },
       addEventListener: (type: string, fn: (event: Event) => void) => {
         const list = listeners.get(type) ?? [];
@@ -1012,6 +1014,13 @@ function mountFingerHarness(chrome = PHONE_CHROME as Parameters<typeof writeSide
   const stop = injectSidebarDepth(doc as unknown as Document, { chrome });
   return {
     sent,
+    get frames() { return frames; },
+    get cancelledFrames() { return cancelledFrames; },
+    get motionListeners() { return (listeners.get("pointermove") ?? []).length + (listeners.get("wheel") ?? []).length; },
+    setChrome(next: Parameters<typeof writeSidebarChrome>[1]) {
+      writeSidebarChrome(doc as unknown as Document, next);
+      for (const fn of listeners.get(SIDEBAR_CHROME_EVENT) ?? []) fn(new Event(SIDEBAR_CHROME_EVENT));
+    },
     get blurCount() {
       return blurCount;
     },
@@ -1417,7 +1426,27 @@ describe("sidebarDepthCss", () => {
 });
 
 describe("injectSidebarDepth", () => {
-  it("writes a position-driven stylesheet and removes it on cleanup", () => {
+  it("runs geometry sampling only on phone and stops it when device chrome changes", () => {
+    const desktop = { ...PHONE_CHROME, device: "desktop" } as const;
+    const harness = mountFingerHarness(desktop);
+    try {
+      assert.equal(harness.frames, 0);
+      assert.equal(harness.motionListeners, 0);
+      harness.setChrome(PHONE_CHROME);
+      assert.equal(harness.frames, 1);
+      assert.ok(harness.motionListeners > 0);
+      harness.setChrome(desktop);
+      assert.equal(harness.cancelledFrames, 1);
+      assert.equal(harness.motionListeners, 0);
+      harness.fire("pointermove", { type: "pointermove" });
+      harness.fire("wheel", { type: "wheel" });
+      assert.equal(harness.frames, 1);
+    } finally {
+      harness.stop();
+    }
+  });
+
+  it("writes the phone position-driven stylesheet and removes it on cleanup", () => {
     const nodes: { id: string; textContent: string }[] = [];
     const doc = {
       getElementById: (id: string) => nodes.find((node) => node.id === id) ?? null,
@@ -1439,7 +1468,7 @@ describe("injectSidebarDepth", () => {
       },
       querySelectorAll: () => [],
     };
-    const stop = injectSidebarDepth(doc as unknown as Document);
+    const stop = injectSidebarDepth(doc as unknown as Document, { chrome: PHONE_CHROME });
     assert.equal(nodes.length, 1);
     assert.match(nodes[0].textContent, /--lite-sidebar-depth/);
     assert.match(nodes[0].textContent, /--bb-motion-right-depth/);
@@ -1488,13 +1517,13 @@ describe("injectSidebarDepth", () => {
       querySelectorAll: () => [],
     };
     const stop = injectSidebarDepth(doc as unknown as Document, { pluginId: "sidebar" });
+    assert.equal(nodes[0]?.textContent, "");
     writeSidebarChrome(doc as unknown as Document, PHONE_CHROME);
     listeners.get(SIDEBAR_CHROME_EVENT)?.(new Event(SIDEBAR_CHROME_EVENT));
     assert.match(nodes[0]?.textContent ?? "", /bb-sidebar-phone-shelf \*\/\s*@media all/);
     writeSidebarChrome(doc as unknown as Document, { ...PHONE_CHROME, device: "desktop", viewport: "wide" });
     listeners.get(SIDEBAR_CHROME_EVENT)?.(new Event(SIDEBAR_CHROME_EVENT));
-    assert.match(nodes[0]?.textContent ?? "", /bb-sidebar-phone-shelf \*\/\s*@media not all/);
-    assert.doesNotMatch(nodes[0]?.textContent ?? "", /bb-sidebar-desktop-card/);
+    assert.equal(nodes[0]?.textContent, "");
     const other = new Event("bb-sidebar-desktop-layout");
     Object.assign(other, { detail: { pluginId: "other", enabled: true } });
     listeners.get("bb-sidebar-desktop-layout")?.(other);
