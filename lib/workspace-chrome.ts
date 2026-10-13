@@ -16,7 +16,7 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:4px 0; }
 :root:not([data-bb-sidebar-phone]) :is([data-sidebar="inset"], [data-app-content-shell]) { background:transparent; }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="inset"] { border-block-width:0; border-inline-start:1px solid transparent; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="inset"] { border-block-width:0; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:8px 4px 8px 8px; border-radius:18px; overflow:clip; border-color:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] > div { max-width:100%; }
 /* 웹의 탭바가 content shell 안에 있을 때만 왼쪽 표면도 그 높이만큼 내린다. */
