@@ -109,14 +109,44 @@ test("pane surfaces preserve the native transparent focus overlay", (t) => {
  doc.querySelector('[data-app-content-shell]')!.innerHTML=`
  <style>.focus-clear{background:transparent}.focus-dim{background:rgba(0,0,0,.3)}</style>
  <div data-split-pane-id="chat" data-focused="true"><div data-content>Chat</div><div data-pane-focus-scrim class="focus-clear" style="position:absolute;inset:0"></div></div>
- <div data-split-pane-id="right"><section>Right panel</section><div data-pane-focus-scrim class="focus-dim"></div></div>`;
+ <div data-split-pane-id="right" data-focused="false" style="position:absolute"><section>Right panel</section><div data-pane-focus-scrim class="focus-dim"></div></div>`;
  const scrims=Array.from(doc.querySelectorAll<HTMLElement>('[data-pane-focus-scrim]'));
  const before=scrims.map(e=>dom.window.getComputedStyle(e).backgroundColor);
  const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
  t.after(()=>{stop();dom.window.close();});
  assert.deepEqual(scrims.map(e=>dom.window.getComputedStyle(e).backgroundColor),before);
  assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-pane-id] > section')!).borderRadius,"18px");
+ assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-pane-id="right"]')!).position,"absolute");
  assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-app-content-shell]')!).backgroundColor,"rgba(0, 0, 0, 0)");
+});
+
+test("pane shells are transparent without clearing controls or content cards", (t) => {
+ const dom=page(),doc=dom.window.document;
+ doc.querySelector('[data-app-content-shell]')!.innerHTML=`
+ <style>.surface{background:rgb(30,30,46)}.control{background:rgb(60,60,76)}</style>
+ <div data-split-pane-id="single">
+  <header class="surface" data-surface><div data-testid="app-page-header-content-row"></div></header>
+  <div data-thread-window class="surface" data-surface><form class="control"><button class="control">Send</button></form><div data-bb-plugin-root><div class="control">Message widget</div></div></div>
+ </div>
+ <div data-split-pane-id="plugin" data-focused="true"><div class="surface" data-surface>
+  <div data-pane-content><div data-bb-plugin-root><main class="surface" data-surface>
+   <header class="surface" data-surface>Page header</header>
+   <article class="control"><header class="control">Card title</header></article>
+  </main></div></div>
+ </div></div>
+ <div data-panel><aside class="surface" data-surface><div>
+  <div class="surface" data-surface>Tabs</div>
+  <div class="surface" data-surface><div data-bb-plugin-root><section class="surface" data-surface><button class="control">Selected tab</button></section></div></div>
+ </div></aside></div>
+ <div data-split-pane-id="right-split" data-focused="false"><section class="surface" data-surface>
+  <div class="surface" data-surface>Split toolbar</div><div class="surface" data-surface>Split content</div>
+ </section></div>`;
+ const controls=Array.from(doc.querySelectorAll('.control'));
+ const before=controls.map(e=>dom.window.getComputedStyle(e).backgroundColor);
+ const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ for(const surface of doc.querySelectorAll('[data-surface]')) assert.equal(dom.window.getComputedStyle(surface).backgroundColor,"rgba(0, 0, 0, 0)",surface.outerHTML.slice(0,100));
+ assert.deepEqual(controls.map(e=>dom.window.getComputedStyle(e).backgroundColor),before);
 });
 
 test("desktop at phone width retains workspace tabs", (t) => {

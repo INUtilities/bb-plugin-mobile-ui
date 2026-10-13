@@ -16,10 +16,19 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:8px; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:8px; border-radius:18px; overflow:clip; border-color:transparent; }
-:root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; border-color:transparent !important; background:transparent !important; }
-:root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim]) { border-radius:18px; overflow:clip; background:var(--background); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id]::before { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim]) { border-radius:18px; overflow:clip; background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > [data-pane-focus-scrim] { inset:4px; border-radius:18px; }
-:root:not([data-bb-sidebar-phone]) [data-panel] > aside { border-radius:18px; border-color:transparent; }
+:root:not([data-bb-sidebar-phone]) [data-panel] > aside { isolation:isolate; border-radius:18px; border-color:transparent; background:transparent; }
+:root:not([data-bb-sidebar-phone]) [data-panel] > aside:not(:has([data-split-pane-id]))::before { content:""; position:absolute; inset:0; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
+/* 네이티브 바깥 표면만 비운다. 포커스 scrim과 내부 카드·입력·선택 색은 유지한다. */
+:root:not([data-bb-sidebar-phone]) :is([data-split-pane-id], [data-panel] > aside) :is([data-thread-window], [data-pane-content], header:has(> [data-testid="app-page-header-content-row"])) { background:transparent; }
+:root:not([data-bb-sidebar-phone]) :is([data-panel] > aside > div, [data-split-pane-id] > section) > div { background:transparent; }
+:root:not([data-bb-sidebar-phone]) :is([data-split-pane-id], [data-panel] > aside) [data-bb-plugin-root]:not([data-thread-window] *) > :is(div, section, main),
+:root:not([data-bb-sidebar-phone]) :is([data-split-pane-id], [data-panel] > aside) [data-bb-plugin-root]:not([data-thread-window] *) > :is(div, section, main) > header,
+:root:not([data-bb-sidebar-phone]) :is([data-split-pane-id], [data-panel] > aside) [data-bb-plugin-root]:not([data-thread-window] *) > :is(div, section, main) > main > header { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-resize-grid-boundary] { background:transparent !important; }
 `;
 export interface WorkspaceChromeOptions {
