@@ -95,6 +95,24 @@
 
 이 문서에서 **확인**은 로컬 코드 또는 공식 문서로 확인한 사실, **제안**은 이 플러그인에 적용할 수 있는 설계 판단, **검증 필요**는 실제 앱에서 아직 입증하지 못한 내용을 뜻한다. BB가 Electron으로 동작한다고 가정하지 않는다.
 
+## 후속 제안: workspace 배치를 플레이스홀더로 전환
+
+사용자 제안은 현재 페인을 단순한 플레이스홀더로 바꾼 뒤 다음 workspace의 배치로 움직여, 화면 준비 중의 빈 화면·깜박임을 줄이는 것이다. **체감 대기 개선 후보로 타당하다. 효과가 진행되는 동안 다음 화면 준비가 겹쳐야 시간을 활용할 수 있다.** 애니메이션을 끝까지 기다린 뒤 navigation을 시작하면 그만큼 지연을 추가한다.
+
+제안하는 흐름:
+
+1. 탭 선택 즉시 현재 pane 위치에 배경·provider 아이콘·제목만 있는 별도 overlay를 표시한다.
+2. 저장해 둔 다음 workspace 배치로 overlay 카드만 `transform`·`opacity`로 이동시킨다. 실제 채팅·editor의 폭을 매 frame 바꾸지 않는다. 없어지는 카드와 새 카드는 fade로 처리한다.
+3. 다음 내용을 함께 준비하고, 준비된 pane부터 placeholder를 걷어 낸다. 빠르게 준비되면 효과를 단축하고, 늦으면 placeholder를 유지한다. 고정 sleep으로 준비 완료를 가정하지 않는다.
+
+**현재 코드의 제약:** 같은 URL로 복원할 때 `location.reload()`를 호출한다. 이때 이전 document의 overlay와 JS도 함께 종료된다. 세션에 다음 배치와 전환 시작 상태를 남겨 새 document에서 placeholder를 복원할 수는 있지만, 플러그인 mount 전 첫 paint까지 덮는다는 공개 계약은 확인하지 못했다. 따라서 현재 플러그인만으로 끊김 없는 전환이나 로딩 시간의 완전한 은폐를 약속하지 않는다. [workspace-chrome.ts](../lib/workspace-chrome.ts)
+
+**공식 API 검토:** same-document `startViewTransition()`은 같은 document의 DOM 변경용이다. cross-document 전환은 양쪽 문서가 같은 origin이며 CSS로 참여해야 하고, `navigation: auto`에는 사용자·스크립트의 reload가 제외된다. 현재 코드에 이 CSS만 추가해 모든 workspace 전환이 이어진다고 볼 수 없다. [MDN View Transition 사용법](https://developer.mozilla.org/en-US/docs/Web/API/View_Transition_API/Using), [Chrome cross-document 참여 조건](https://developer.chrome.com/docs/web-platform/view-transitions/cross-document#cross-document_view_transitions_are_opt-in)
+
+**실험 범위:** 재로드 직전·직후 placeholder 복원으로 시각적 단절이 줄어드는지를 실제 desktop에서 먼저 비교한다. 같은 URL의 다른 배치, 다른 URL, 1→4→2 pane, 빠른 연속 탭 선택, 느린 로딩·실패, Browser·Terminal 혼합을 포함한다. 일회성 전환 정보는 짧은 유효기간과 정리 경로를 두어 오래된 overlay가 화면을 가리지 않게 한다. `prefers-reduced-motion`에서는 이동 효과를 생략하며 phone에는 적용하지 않는다.
+
+**채택 조건:** 클릭→사용 가능 시간에 인위적 대기가 추가되지 않고, 빈 frame과 프레임 지연이 줄며, 입력·scroll·native view 복원이 유지될 것. 단절을 줄이지 못하면 실제 적용하지 않는다. 완전한 병행 전환은 재로드 없는 host layout 교체 또는 document 바깥에서 유지되는 host 전환 표면이 필요하다. 이번 후속 조사는 설계 기록만 추가했으며 실행 코드는 변경하지 않았다.
+
 ## 공식 자료로 확인한 숨김 방식의 차이
 
 | 방식 | 보존·절감하는 것 | 남는 비용 또는 제한 | 적합한 후보 |
