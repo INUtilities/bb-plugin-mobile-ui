@@ -66,3 +66,35 @@ test("sidebar drags, header buttons and secondary clicks never blank the panes",
     ghost.remove(); f.dom.window.dispatchEvent(new f.dom.window.Event('pointerup'));
   }
 });
+
+test("thread placeholders show each pane's title and selected provider artwork", async t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  f.doc.querySelector('[data-split-pane-id="chat"] .cursor-grab')!.textContent = '첫 번째 <스레드>';
+  const second = f.doc.createElement('div');
+  second.dataset.splitPaneId = 'chat-two';
+  second.innerHTML = '<header data-testid="app-page-header-content-row"><p class="cursor-grab">다른 스레드 제목</p></header><div data-thread-window>Second chat</div>';
+  f.doc.querySelector('[data-app-content-shell]')!.append(second);
+  const providers = f.doc.createElement('div'); providers.hidden = true;
+  providers.innerHTML = '<span data-sidebar-thread-provider="thread-one"><span class="size-6"><span data-provider-logo="/codex.svg" style="mask-image:url(/codex.svg)"></span></span></span><span data-sidebar-thread-provider="thread-two"><span><svg data-custom-provider="claude"><path d="M1 1h4"></path></svg></span></span>';
+  f.doc.body.append(providers);
+  const children = ['chat', 'chat-two'].map((paneId, i) => ({ type:'pane', paneId, content:{ kind:'thread', projectId:'project', threadId:i ? 'thread-two' : 'thread-one' } }));
+  f.dom.window.sessionStorage.setItem('bb.splitLayout', JSON.stringify({version:1, layout:{root:{type:'split',dir:'row',sizes:[0.5,0.5],children},focusedPaneId:'chat'}}));
+  f.down(); f.ghost(); await settle();
+  const first = f.doc.querySelector('[data-split-pane-id="chat"] [data-sidebar-pane-placeholder]')!;
+  const other = second.querySelector('[data-sidebar-pane-placeholder]')!;
+  assert.equal(first.querySelector('[data-sidebar-pane-placeholder-title]')?.textContent, '첫 번째 <스레드>');
+  assert.equal(other.querySelector('[data-sidebar-pane-placeholder-title]')?.textContent, '다른 스레드 제목');
+  assert.ok(first.querySelector('[data-provider-logo="/codex.svg"]'));
+  assert.ok(other.querySelector('[data-custom-provider="claude"]'));
+  assert.notEqual(first.querySelector('[data-provider-logo]'), providers.querySelector('[data-provider-logo]'));
+  assert.equal(first.querySelector('스레드'), null, 'title is text, never HTML');
+  assert.equal(f.doc.querySelector('[data-split-pane-id="codes"] [data-sidebar-pane-placeholder-title]'), null);
+});
+
+test("thread title remains available when provider metadata is missing", async t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  f.down(); f.ghost(); await settle();
+  const placeholder = f.doc.querySelector('[data-split-pane-id="chat"] [data-sidebar-pane-placeholder]')!;
+  assert.equal(placeholder.querySelector('[data-sidebar-pane-placeholder-title]')?.textContent, 'Chat');
+  assert.ok(placeholder.querySelector('[data-sidebar-pane-placeholder-icon] svg'));
+});
