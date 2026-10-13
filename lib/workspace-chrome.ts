@@ -5,12 +5,15 @@ const LAYOUT_KEY = "bb.splitLayout";
 const MAXIMIZED_KEY = "bb.splitLayout.maximizedPaneId";
 export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspaces] { display:flex; align-items:center; gap:4px; min-width:0; flex:1; height:36px; overflow-x:auto; scrollbar-width:none; -webkit-app-region:no-drag; }
-[data-sidebar-workspace-tab] { display:flex; align-items:center; flex-shrink:0; border-radius:var(--radius-md, 6px); color:var(--muted-foreground); }
-[data-sidebar-workspace-tab][data-active] { background:var(--sidebar-accent); color:var(--sidebar-accent-foreground); }
+[data-sidebar-workspace-tab] { position:relative; box-sizing:border-box; flex:0 0 140px; height:28px; border:1px solid var(--border); border-radius:var(--radius-md, 6px); background:var(--sidebar); color:var(--muted-foreground); }
+[data-sidebar-workspace-tab]:hover { background:var(--state-hover); color:var(--foreground); }
+[data-sidebar-workspace-tab][data-active] { border-color:color-mix(in oklab, var(--ring) 55%, var(--border)); background:var(--sidebar-accent); color:var(--sidebar-accent-foreground); }
 [data-sidebar-workspaces] button { border:0; background:transparent; color:inherit; font:inherit; font-size:12px; line-height:18px; padding:6px 10px; border-radius:var(--radius-md, 6px); cursor:pointer; -webkit-app-region:no-drag; }
-[data-sidebar-workspaces] button:hover { background:color-mix(in oklab, var(--foreground) 6%, transparent); }
 [data-sidebar-workspaces] button:focus-visible { outline:2px solid var(--ring); outline-offset:-2px; }
-[data-sidebar-workspaces] button[data-workspace-close] { padding:4px 7px; }
+[data-sidebar-workspace-tab] button[role=tab] { display:block; width:100%; height:100%; padding:0 28px 0 10px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+[data-sidebar-workspaces] button[data-workspace-close] { position:absolute; top:3px; right:3px; display:grid; place-items:center; width:20px; height:20px; padding:0; color:var(--muted-foreground); }
+[data-sidebar-workspaces] button[data-workspace-close]:hover:not(:disabled), [data-sidebar-workspaces] > button:hover { background:var(--state-hover); color:var(--foreground); }
+[data-sidebar-workspaces] > button { flex:0 0 28px; height:28px; padding:0; }
 [data-sidebar-workspaces] button:disabled { cursor:default; opacity:.3; }
 [data-sidebar-workspaces] [role=status] { font-size:12px; color:var(--destructive); padding:0 8px; }
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px 6px; display:flex; align-items:center; }
@@ -88,6 +91,7 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
       const group = doc.createElement("div"); group.dataset.sidebarWorkspaceTab = tab.id;
       if (tab.id === state.activeId) group.dataset.active = "";
       const select = button(tab.name, () => { if (tab.id === state.activeId || switching) return; checkpoint(); state = selectWorkspace(state, tab.id); restore(); });
+      select.title = tab.name;
       select.setAttribute("role", "tab"); select.setAttribute("aria-selected", String(tab.id === state.activeId));
       const close = button("×", () => { if (switching) return; checkpoint(); const active = state.activeId; state = closeWorkspace(state, tab.id); writeState(); if (state.activeId !== active) restore(); else render(); });
       close.dataset.workspaceClose = ""; close.disabled = state.tabs.length === 1; close.setAttribute("aria-label", `${tab.name} 워크스페이스 닫기`); close.title = close.disabled ? "마지막 워크스페이스는 닫을 수 없습니다." : "워크스페이스 닫기";
