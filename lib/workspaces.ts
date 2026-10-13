@@ -87,16 +87,3 @@ export function decodeWorkspaces(raw: string | null, fallback: WorkspaceSnapshot
   } catch { return createWorkspaces(fallback); }
 }
 export function listPanes(node: LayoutNode): Extract<LayoutNode, { type: "pane" }>[] { return node.type === "pane" ? [node] : node.children.flatMap(listPanes); }
-function replaceNode(node: LayoutNode, id: string, replacement: LayoutNode): LayoutNode { return node.type === "pane" ? node.paneId === id ? replacement : node : { ...node, children: node.children.map(child => replaceNode(child, id, replacement)) }; }
-export function openPane(snapshot: WorkspaceSnapshot, content: PaneContent, route: string, mode: OpenMode, id: string): WorkspaceSnapshot {
-  const pane: LayoutNode = { type: "pane", paneId: id, content };
-  const initial = contentForRoute(snapshot.route);
-  const layout = snapshot.layout ?? (initial ? { root: { type: "pane" as const, paneId: `${id}-previous`, content: initial }, focusedPaneId: `${id}-previous` } : null);
-  if (layout === null || (layout.root.type === "pane" && layout.root.content.kind === "new-thread" && snapshot.route === "/")) return { route, layout: { root: pane, focusedPaneId: id }, maximizedPaneId: null };
-  if (mode === "replace") return { ...snapshot, route, layout: { ...layout, root: replaceNode(layout.root, layout.focusedPaneId, { ...pane, paneId: layout.focusedPaneId }) } };
-  if (listPanes(layout.root).length >= 8) throw new Error("BB는 최대 8개 페인을 지원합니다. 페인을 닫거나 열기 방식을 교체로 바꿔 주세요.");
-  const focused = listPanes(layout.root).find(pane => pane.paneId === layout.focusedPaneId);
-  if (!focused) throw new Error("활성 페인을 찾을 수 없습니다.");
-  const root = replaceNode(layout.root, focused.paneId, { type: "split", dir: "row", sizes: [0.5, 0.5], children: [focused, pane] });
-  return { route, layout: { root, focusedPaneId: id }, maximizedPaneId: null };
-}

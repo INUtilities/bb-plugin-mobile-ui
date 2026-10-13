@@ -18,8 +18,8 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 
 ## 코드 경계
 
-- `lib/workspaces.ts`: 워크스페이스 상태, 저장값 검증, 네이티브 페인 트리의 추가·교체.
-- `lib/workspace-chrome.ts`: 상단 탭, 네이티브 세션 저장소 연결, 왼쪽 내비게이션과 여백 CSS.
+- `lib/workspaces.ts`: 워크스페이스 상태, 저장값 검증, 네이티브 페인 트리의 검증.
+- `lib/workspace-chrome.ts`: 상단 탭, 네이티브 세션 저장소 연결, 네이티브 modifier-click 내비게이션과 여백 CSS.
 - `app.tsx`: 콘텐츠 스크립트와 기기·설정 브리지 등록.
 - `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
 - `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
@@ -28,7 +28,11 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 
 ## 네이티브 복원 제약
 
-현재 SDK에는 전체 배치 복원 API가 없다. `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
+페인 추가·교체에는 재로드를 쓰지 않는다. 새 페인 모드의 기본 클릭은 BB의 `⌘/Ctrl+클릭` 분할 동작에 전달하고, 교체 모드는 원래 내비게이션을 유지한다. 명시적인 modifier-click은 가로채지 않는다. 페인 추가를 위해 `history`를 감싸거나 `bb.splitLayout`에 쓰지 않는다. 최대 8개에서는 일반 클릭으로 기존 콘텐츠를 교체하지 않고 안내한다.
+
+BB의 첫 1→2 분할은 단일 페인 렌더에서 분할 트리 렌더로 바뀌며 채팅을 다시 마운트한다. 문서 재로드 제거와 네이티브 컴포넌트 마운트 유지를 구분해서 보고한다.
+
+현재 SDK에는 전체 배치 복원 API가 없다. 워크스페이스 탭 추가·전환·활성 탭 닫기에만 재초기화가 남아 있다. `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
 
 탭 목록은 현재 창의 `sessionStorage`에만 둔다. 앱 재로드에서는 유지하고 새 세션에서는 기본 탭부터 시작한다. 플러그인 내부 메모리 상태나 Browser·Terminal 네이티브 뷰의 연속 마운트를 보장한다고 보고하지 않는다.
 

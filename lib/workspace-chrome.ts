@@ -1,4 +1,4 @@
-import { addWorkspace, closeWorkspace, contentForRoute, decodeWorkspaces, normalizeOpenMode, openPane, readNativeLayout, saveWorkspace, selectWorkspace, WORKSPACE_PREFERENCES_EVENT, type OpenMode, type WorkspaceSnapshot, type WorkspaceState } from "./workspaces.ts";
+import { addWorkspace, closeWorkspace, contentForRoute, decodeWorkspaces, normalizeOpenMode, listPanes, readNativeLayout, saveWorkspace, selectWorkspace, WORKSPACE_PREFERENCES_EVENT, type OpenMode, type WorkspaceSnapshot, type WorkspaceState } from "./workspaces.ts";
 import type { Device } from "./device.ts";
 
 const LAYOUT_KEY = "bb.splitLayout";
@@ -39,9 +39,6 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
   let openMode: OpenMode = "new-pane";
   let disposed = false;
   let switching = false;
-  let pendingOpen: WorkspaceSnapshot | null = null;
-  let pendingUntil = 0;
-  let timer: number | undefined;
   let saved = "";
   const writeState = (): void => { const raw = JSON.stringify(state); if (raw === saved) return; try { view.sessionStorage.setItem(key, raw); saved = raw; } catch { /* 저장을 막은 창에서도 현재 세션의 탭은 유지한다. */ } };
   const checkpoint = (): void => { if (switching || disposed) return; state = saveWorkspace(state, capture()); writeState(); };
@@ -96,48 +93,46 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
     openMode = normalizeOpenMode(Reflect.get(detail, "openMode"));
   };
   const onClick = (event: MouseEvent): void => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || switching) return;
+    if (openMode !== "new-pane" || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey || switching) return;
     const element = event.target instanceof view.Element ? event.target : null;
     if (!element || element.closest("[data-sidebar-workspaces]")) return;
-    const thread = element.closest("[data-sidebar-thread-id]");
-    const ribbon = element.closest('nav[aria-label="Primary navigation"]');
-    const sidebarLink = element.closest('[data-sidebar="sidebar"] a[href]');
+    const thread = element.closest("a[data-sidebar-thread-id]");
+    const ribbon = element.closest('nav[aria-label="Primary navigation"] button:not([aria-haspopup])');
+    const label = ribbon?.getAttribute("aria-label") ?? "";
+    const ribbonPage = ribbon && label !== "Home" && !label.startsWith("Search threads") && !label.startsWith("Settings");
+    const sidebarLink = element.closest<HTMLAnchorElement>('[data-sidebar="sidebar"] a[href]');
+    const internalLink = sidebarLink && !sidebarLink.hasAttribute("download") && (!sidebarLink.target || sidebarLink.target === "_self") && sidebarLink.origin === view.location.origin && contentForRoute(sidebarLink.pathname);
     const createThread = element.closest('[data-sidebar="sidebar"] button[aria-label^="New thread"]');
-    if (!thread && !ribbon && !sidebarLink && !createThread) return;
-    pendingOpen = capture(); pendingUntil = Date.now() + 5000; checkpoint();
-    if (timer !== undefined) view.clearTimeout(timer);
-    timer = view.setTimeout(processNavigation, 80);
+    if (!thread && !ribbonPage && !internalLink && !createThread) return;
+    checkpoint();
+    const layout = capture().layout;
+    // 빈 워크스페이스의 첫 화면은 기본 compose 자리를 채운다.
+    if (route() === "/" && layout?.root.type === "pane" && layout.root.content.kind === "new-thread") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (layout && listPanes(layout.root).length >= 8) {
+      showError(new Error("BB는 최대 8개 페인을 지원합니다. 페인을 닫거나 열기 방식을 교체로 바꿔 주세요."));
+      return;
+    }
+    // BB의 리본·스레드 행이 제공하는 modifier-click 분할 경로를 그대로 호출한다.
+    // 저장소를 직접 바꾸거나 문서를 재로드하지 않아 기존 페인을 유지한다.
+    element.dispatchEvent(new view.MouseEvent("click", {
+      bubbles: true, cancelable: true, composed: true, view, metaKey: true,
+      button: event.button, buttons: event.buttons, detail: event.detail,
+      clientX: event.clientX, clientY: event.clientY, screenX: event.screenX, screenY: event.screenY,
+    }));
   };
-  const processNavigation = (): void => {
-    if (!pendingOpen || disposed || switching) return;
-    const before = pendingOpen;
-    const nextRoute = route();
-    if (nextRoute === before.route) { if (Date.now() > pendingUntil) pendingOpen = null; return; }
-    pendingOpen = null;
-    const content = contentForRoute(nextRoute);
-    if (!content) { checkpoint(); return; }
-    // 네이티브 저장소는 읽기 시에만 복원하므로 앱 재초기화 경계를 사용한다.
-    try { const next = openPane(before, content, nextRoute, openMode, view.crypto.randomUUID()); state = saveWorkspace(state, next); restore(); }
-    catch (error) { showError(error); }
-  };
-  const push = view.history.pushState;
-  const replace = view.history.replaceState;
-  const wrappedPush: History["pushState"] = function (...args) { push.apply(view.history, args); if (pendingOpen) { if (timer !== undefined) view.clearTimeout(timer); timer = view.setTimeout(processNavigation, 80); } };
-  const wrappedReplace: History["replaceState"] = function (...args) { replace.apply(view.history, args); if (pendingOpen) { if (timer !== undefined) view.clearTimeout(timer); timer = view.setTimeout(processNavigation, 80); } };
-  view.history.pushState = wrappedPush; view.history.replaceState = wrappedReplace;
   doc.addEventListener("click", onClick, true);
   view.addEventListener(WORKSPACE_PREFERENCES_EVENT, onPreferences);
   view.addEventListener("beforeunload", checkpoint);
-  const tick = view.setInterval(() => { ensureBar(); if (pendingOpen) processNavigation(); else checkpoint(); }, 500);
+  const tick = view.setInterval(() => { ensureBar(); checkpoint(); }, 500);
   render(); ensureBar(); checkpoint();
   return () => {
     checkpoint(); disposed = true;
-    view.clearInterval(tick); if (timer !== undefined) view.clearTimeout(timer);
+    view.clearInterval(tick);
     doc.removeEventListener("click", onClick, true);
     view.removeEventListener(WORKSPACE_PREFERENCES_EVENT, onPreferences);
     view.removeEventListener("beforeunload", checkpoint);
-    if (view.history.pushState === wrappedPush) view.history.pushState = push;
-    if (view.history.replaceState === wrappedReplace) view.history.replaceState = replace;
     bar.remove(); style.remove();
   };
 }
