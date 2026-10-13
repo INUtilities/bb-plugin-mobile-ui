@@ -1,28 +1,41 @@
 ---
 name: sidebar
-description: 왼쪽 사이드바와 우측 패널이 열리고 닫힐 때의 등장 모션. 스레드 목록 테마는 bb-thread-theme가 맡는다.
+description: BB의 상단 워크스페이스 탭, 페인 열기 방식, 사이드바·페인 간 여백과 모서리 및 기존 phone 드로어 모션을 변경한다.
 ---
 
-# sidebar
+# Sidebar와 워크스페이스
 
-왼쪽 셸(`[data-sidebar="panel"]`)과 우측 패널(`[data-panel] > aside`, 좁은 화면의 secondary shelf)의 열림과 닫힘만 담당한다. 스레드 행의 색, 아이콘, 브랜치 표시는 `bb-thread-theme`다.
+plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --json`으로 확인한다. 프로토타입 요청과 실제 플러그인 변경 요청을 구분한다.
 
-모션 코드는 `lib/sidebar-depth.ts`다. 콘텐츠 스크립트 `sidebar-depth`가 마운트될 때 스타일과 추적기를 붙이고, 해제될 때 둘 다 걷어 낸다. 설정 `desktopLayout`(라벨 `데스크톱 카드 레이아웃`)은 기본값이 켜짐이다. 플러그인 설정 화면의 스위치로 바꾼다. 끄면 카드 CSS, 카드 슬라이드 phase, 카드용 `prefers-reduced-motion`이 빠지고 카드 이전의 밝기 슬라이드로 돌아간다. 추적기는 그때 데스크톱 패널의 좌표를 다시 읽어 `--lite-sidebar-depth`를 맞춘다. 좁은 화면 드로어는 남는다. 채팅 면 테마 `plugin:sidebar:chat-canvas`는 이 스위치와 따로다. 값은 `bb plugin config sidebar set desktopLayout false`로도 바꾼다. 변경은 realtime `desktop-layout`으로 스타일시트에 바로 반영된다.
+## 제품 계약
 
-우측 패널의 `aside`에는 `filter`, `transform`, `left`/`right`를 두지 않는다. 브라우저 탭의 네이티브 뷰와 터미널 WebGL이 그 아래에서 멈추거나 열리지 않는다. `:has([style*="220ms"])`도 쓰지 않는다. 탭 안 스타일이 바뀔 때마다 패널 전체 스타일을 다시 계산한다. 추적기는 패널 껍데기만 본다.
+- 상단 탭 하나가 여러 네이티브 BB 페인과 그 배치를 소유한다.
+- 기본 탭 하나로 시작하고 마지막 탭은 닫을 수 없다.
+- 화면은 기존 왼쪽 리본 메뉴와 스레드 목록에서 연다. 오른쪽에 새 도구 목록을 만들지 않는다.
+- `openMode`는 `new-pane`(기본) 또는 `replace`다. 설정 UI에서는 「새 페인에 열기」와 「현재 활성 페인의 화면 교체」로 표시한다.
+- `desktopLayout` 설정은 제거했다. 오래된 카드 토글·이벤트·저장값을 다시 읽지 않는다.
+- 워크스페이스 제목·페인 개수·좌우/상하 분할 버튼으로 된 별도 툴바는 만들지 않는다.
 
-기기 판정은 `lib/device.ts`, `lib/use-device.ts`에 원본 그대로 복사한 `useDeviceChrome()`의 `device`, `orientation`, `viewport`, `hitTarget`만 쓴다. 복사본을 수정하거나 헬퍼를 플러그인으로 설치하지 않는다. `lib/sidebar-chrome.ts`가 이 값을 콘텐츠 스크립트로 전달한다. desktop의 medium·wide에서만 기존 떠 있는 카드를 적용하며 narrow는 기존 기본 레이아웃을 쓴다. desktop의 폰트·버튼 크기는 바꾸지 않는다. phone은 좁은 portrait·landscape의 현재 shelf 효과를 유지한다. 넓은 phone landscape에는 기존처럼 narrow shelf 효과와 desktop 카드를 적용하지 않는다. tablet 전용 크롬은 만들지 않는다. 여백은 10px, 모서리는 20px 스쿼클이다. 그림자는 라이트 `0 12px 32px rgb(0 0 0 / 0.16)`, 다크 `0 12px 32px rgb(0 0 0 / 0.55)`다. 카드 뒤 여백과 우측 패널 껍데기는 호스트의 `--sidebar`를 쓴다. 프로스트는 `::before`에만 두며 `color-mix(in srgb, var(--sidebar) 62%, transparent)`와 `blur(24px) saturate(1.5)`를 쓴다. 밝기 모드나 테마가 바뀌어도 고정 팔레트를 선언하지 않는다. 왼쪽 패널, 바로 아래 `[data-sidebar="sidebar"]`, 우측 `aside`만 투명하게 한다. 내부 `.bg-sidebar` 전체를 덮어쓰지 않는다. 제목, 활성 탭, 플러그인 콘텐츠는 각자의 표면을 유지한다. 목록이나 채팅 플러그인의 색 변수와 설정을 읽지 않고, 다른 플러그인에 카드 상태를 제공하지 않는다. 호스트의 footer fade도 유지한다. 모바일은 호스트 `--sidebar`와 기존 drawer/shelf 효과를 쓴다.
+## 코드 경계
 
-선택 테마 `plugin:sidebar:chat-canvas`는 별도 기능이다. 사용자가 이 테마를 선택할 때만 채팅과 사이드바를 조금 더 어둡게 설정한다. 라이트는 `--canvas: oklch(0.95 0 0)`, `--sidebar: oklch(0.93 0 0)`, 다크는 각각 `oklch(0.15 0 0)`, `oklch(0.18 0 0)`다. 강조색과 UI 효과는 바꾸지 않는다. 카드 레이아웃은 이 선택과 독립적으로 현재 BB 테마의 색을 따른다.
+- `lib/workspaces.ts`: 워크스페이스 상태, 저장값 검증, 네이티브 페인 트리의 추가·교체.
+- `lib/workspace-chrome.ts`: 상단 탭, 네이티브 세션 저장소 연결, 왼쪽 내비게이션과 여백 CSS.
+- `app.tsx`: 콘텐츠 스크립트와 기기·설정 브리지 등록.
+- `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
+- `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
 
-왼쪽 카드 셀렉터는 `[data-side="left"] > [data-sidebar="panel"]`이다. 이 특이도는 `body.sidebar-resizing [data-sidebar="panel"]`보다 낮아서 너비 드래그는 즉시 반응한다. `left`는 10px에 고정된다. 열려 있을 때 `transform`은 `none`이다. `translateX(0)`을 남겨 두면 그 카드가 fixed 자손의 containing block이 되고, `overflow: clip`이 리사이즈 핸들을 카드 안에 가둔다. 패널의 `filter`는 `none`이다. `backdrop-filter`는 패널과 우측 `aside`에 두지 않는다. 그 요소에 두면 fixed 자손의 containing block이 되고, 우측은 브라우저 뷰와 터미널 WebGL이 다시 로드된다. 프로스트 `backdrop-filter`는 `::before`에만 둔다. 닫힐 때 `none`에서 `translateX(-100%)`로 이어진다. 투명도는 1이다. 호스트 핸들(`[data-testid$="-sidebar-resize-handle"]`)은 카드 안 `right: -0.375rem`이라 둥근 카드 가장자리에서 드래그를 받는다. 데스크톱에서 사이드바가 열려 있으면 그 핸들을 `position: fixed`로 두고, gap의 오른쪽 끝에 12px 막대의 중심을 둔다. `anchor-scope: --bb-motion-left-column`은 왼쪽 사이드바가 여러 개여도 앵커가 섞이지 않게 한다. 접힘 셀렉터는 `[data-collapsible="offcanvas"][data-side="left"] > [data-sidebar="panel"]`이다. 닫힐 때는 `translateX(-100%)`, 투명도 0이고, 720ms 뒤에 숨는다. 같은 `transform`과 `opacity` transition이 양쪽을 잇는다. 이 transition에 `width`를 넣지 않는다. 데스크톱 카드의 `filter`는 `none`이다. 밝기 필터를 매 프레임 다시 칠하면 슬라이드가 끊긴다. `pointer-events`는 접히면 바로 꺼진다. gap은 0으로 줄어 채팅이 넓어진다. 추적기는 데스크톱 카드의 변형된 좌표를 읽지 않는다. 드로어와 좁은 화면 shelf만 좌표를 샘플한다. 숨김은 접힘 CSS가 한다.
+기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 두 복사본은 고치지 않는다. 데스크톱의 좁은 창을 phone으로 취급하지 않는다. 색은 현재 BB 테마 토큰만 쓴다. 스레드 목록의 행 테마와 다른 플러그인 설정은 건드리지 않는다.
 
-우측 카드의 모서리와 그림자는 `aside`에 둔다. `aside`의 너비는 패널의 `calc(100% - 20px)`이다. `aside`의 `overflow: clip`은 자기 box-shadow를 자르지 않는다. 잘리는 쪽은 조상이다. react-resizable-panels가 `[data-panel]`에 `overflow: hidden`을 inline으로 넣는다. 왼쪽 카드는 `position: fixed`라 조상 overflow에 그림자가 잘리지 않는다. 데스크톱은 그 패널에 `overflow: visible !important`를 준다. 그림자가 그래도 컴포저 판에 가리는 이유는 overflow가 아니다. 스레드 footer(`[data-scroll-footer]`)가 `z-index: 20`이고, 카드는 그 아래에 있다. 왼쪽 패널과 우측 `aside`의 `z-index`는 21이라 카드 그림자가 그 판 위에 그려진다. 우측 패널 껍데기에는 `z-index`를 두지 않는다. 껍데기를 올리면 경계의 리사이즈 핸들이 카드 아래로 간다. `#thread-detail-secondary-panel-handle`은 22라서 grip이 그림자 위에 남는다. 그 핸들의 배경과, 히트 영역이 아닌 자식의 세로선은 투명이다. 닫히는 우측 패널도 21이다. `aside`에는 `transform`을 두지 않는다. 왼쪽 핸들(`[data-testid$="-sidebar-resize-handle"]`)과 우측 핸들의 히트 영역은 세로로 그대로 둔다. 보이는 것은 hover와 드래그 중에만 가운데에 나오는 짧은 막대(`::before`, 4×32px)다. 라이트 모드 색은 `var(--sidebar-foreground)`다. `.dark`에서는 `var(--sidebar-border)`다. 우측 라이브러리는 핸들 border box만 hit test하고, 호스트 box는 1px이라 `data-resize-handle-state="hover"`가 넓은 히트 영역에서는 켜지지 않는다. 켜진 핸들(`[data-panel-resize-handle-enabled]`)은 `width: 16px`와 좌우 margin `-8px`로 레이아웃 폭은 유지한 채 hit box만 넓힌다. 그립은 CSS `:hover`와 `:active`에서도 켠다. 전체 높이 선은 평상시에도 hover에도 보이지 않는다. 열린 `[data-panel]`의 `transform`은 `none`이다. 이렇게 두어야 브라우저와 터미널이 열린 상태에서 다시 로드되지 않는다. 닫힘과 열림은 `aria-hidden`이 바뀐 뒤에만 `data-bb-motion-right-phase`를 붙인다. 첫 샘플에서는 붙이지 않는다. 우측 모션은 `transition`이 아니라 keyframe이다. 접히는 슬롯에서 `position`까지 같은 프레임에 바꾸면 `transition`이 생략되어 닫힘이 안 보인다. `leave`는 패널을 `position: fixed`로 오른쪽에 두고, 저장한 `--bb-motion-right-card-width` 폭을 유지한 채 `translateX(0)`에서 `translateX(100%)`로 밀며 투명도를 0으로 만든다. `enter`는 슬롯 안에서 `translateX(100%)`에서 `translateX(0)`로 들어오고 투명도가 올라간다. `position`은 바꾸지 않는다. 둘 다 720ms다. 끝난 뒤 속성을 지워서 열린 패널에 `transform`이 남지 않게 한다. 닫힌 채 phase가 없으면 `transform` 없이 숨긴다. 너비는 열려 있을 때만 저장한다. 열린 패널의 `transition`에는 `flex-grow`와 `flex-basis`를 남겨 호스트의 폭 애니메이션을 유지한다.
+## 네이티브 복원 제약
 
-`prefers-reduced-motion`에서는 접힌 왼쪽 카드와 닫힌 우측 카드를 즉시 숨기고, `transform`은 `none`이다.
+현재 SDK에는 전체 배치 복원 API가 없다. `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
 
-왼쪽 사이드바가 열릴 때 채팅을 어둡게 하지 않는다. 컴포저에 커서가 있으면 그 포커스를 빼서 키보드를 내린다. 왼쪽 사이드바를 열고 닫을 때와 우측 패널의 열림, 닫힘, 탭은 `impact-light`다.
+탭 목록은 현재 창의 `sessionStorage`에만 둔다. 앱 재로드에서는 유지하고 새 세션에서는 기본 탭부터 시작한다. 플러그인 내부 메모리 상태나 Browser·Terminal 네이티브 뷰의 연속 마운트를 보장한다고 보고하지 않는다.
 
-우측 패널의 탭, 새 탭 버튼, 닫기 버튼, 좌우 버튼을 누를 때와 탭 줄을 좌우로 밀어 바꿀 때 짧은 진동을 보낸다. 새 탭 목록의 기본 액션, 플러그인 액션, 최근 파일, 검색 결과 행도 공통으로 처리한다. 개별 플러그인의 `threadPanelAction.run`에 같은 진동을 넣지 않는다. 실행 행은 실제 `click`이 전파된 뒤에만 처리하므로 스크롤이나 정렬 드래그의 손가락 해제에는 진동하지 않는다. 정렬 핸들, 보조 버튼, 비활성 행은 제외한다. 기존 탭 햅틱과 중복 방지 시간을 공유하며 콘텐츠 스크립트 해제 시 리스너를 제거한다. 패널 껍데기 스타일은 바꾸지 않는다.
+우측 `aside`에는 `filter`, `transform`, `left`/`right`, `backdrop-filter`를 추가하지 않는다. Browser 네이티브 뷰와 Terminal WebGL을 깨뜨릴 수 있다. 리사이즈 히트 영역은 유지한다. 네이티브 페인 최대 개수는 8이다.
 
-phone의 narrow viewport에서만, 우측 패널은 오른쪽에서 들어오고 채팅보다 위에 쌓인다. 패널 껍데기는 열리는 동안 `translateX`로 오른쪽 밖에서 들어온다. 다 열리면 그 `transform`을 끈다. 켜 둔 채 두면 브라우저와 터미널이 다시 로드된다. 채팅 이동 시간은 앱의 220ms 그대로 둔다. 채팅은 화면의 절반만 왼쪽으로 밀리고, 그 진행에 맞춰 어두워진다. 어두움은 채팅(`inset`)에만 둔다. 패널이 채팅 위에 있으므로 채팅 오른쪽 모서리는 둥글게 하지 않는다. 패널 왼쪽 모서리는 48px 스쿼클이다. 채팅 배경을 그 왼쪽으로 넓혀 세로선이 없게 한다.
+## 확인과 적용
+
+`npm test`, `npm run typecheck`, `bb plugin build .`를 실행한다. 요청이 실제 화면 확인을 포함하면 검증된 변경을 설치 소스에 합치고 `bb plugin reload sidebar`로 적용한다. 설치 경로와 실행 번들 해시를 확인한다.
+
+워크스페이스 전환·복원, 왼쪽 리본 페이지 열기, 스레드 목록 열기, 새 페인/활성 페인 교체, 마지막 탭 보호를 실제 앱에서 확인한다. native title bar와 웹의 content shell 두 위치가 모두 중요하다. phone 캡처가 없으면 없다고 명시한다. 화면 완료는 사용자가 판정한다.

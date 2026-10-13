@@ -1,11 +1,4 @@
 import {
-  DESKTOP_LAYOUT_EVENT,
-  fetchDesktopLayoutEnabled,
-  readDesktopLayoutDetail,
-  readDesktopLayoutEnabled,
-  writeDesktopLayoutEnabled,
-} from "./desktop-layout.ts";
-import {
   SIDEBAR_CHROME_EVENT,
   DEFAULT_SIDEBAR_CHROME,
   clearSidebarChrome,
@@ -683,8 +676,9 @@ export function blurComposerCaret(doc: Document): boolean {
   const active = doc.activeElement;
   if (active == null || typeof active.closest !== "function") return false;
   if (active.closest("[data-promptbox]") === null) return false;
-  if (typeof active.blur !== "function") return false;
-  active.blur();
+  const blur = Reflect.get(active, "blur");
+  if (typeof blur !== "function") return false;
+  blur.call(active);
   return true;
 }
 
@@ -862,50 +856,23 @@ export function injectSidebarDepth(
   doc: Document,
   options: { pluginId?: string; chrome?: SidebarChrome } = {},
 ): () => void {
-  const pluginId = options.pluginId ?? "sidebar";
   const existing = doc.getElementById(STYLE_ID);
   existing?.remove();
   const style = doc.createElement("style");
   style.id = STYLE_ID;
   const view = doc.defaultView;
   writeSidebarChrome(doc, options.chrome ?? readSidebarChrome(doc));
-  const apply = (enabled: boolean): void => {
-    setDesktopCardLayout(enabled);
-    style.textContent = sidebarDepthCss(enabled, readSidebarChrome(doc));
+  const apply = (): void => {
+    setDesktopCardLayout(false);
+    style.textContent = sidebarDepthCss(false, readSidebarChrome(doc));
     syncSidebarDepth(doc);
   };
-  apply(readDesktopLayoutEnabled(view?.localStorage, pluginId));
+  apply();
   doc.head.append(style);
-  let revision = 0;
-  const onLayout = (event: Event): void => {
-    const detail = readDesktopLayoutDetail(Reflect.get(event, "detail"));
-    if (detail === null || detail.pluginId !== pluginId) return;
-    revision += 1;
-    writeDesktopLayoutEnabled(view?.localStorage, pluginId, detail.enabled);
-    apply(detail.enabled);
-  };
-  view?.addEventListener?.(DESKTOP_LAYOUT_EVENT, onLayout);
-  const onChrome = (): void => {
-    finger = null;
-    heldHaptics = [];
-    apply(desktopCardLayout);
-  };
+  const onChrome = (): void => { finger = null; heldHaptics = []; apply(); };
   view?.addEventListener?.(SIDEBAR_CHROME_EVENT, onChrome);
-  const token = revision;
-  const fetchImpl = view?.fetch?.bind(view);
-  if (fetchImpl !== undefined) {
-    void fetchDesktopLayoutEnabled(pluginId, fetchImpl)
-      .then((enabled) => {
-        if (enabled === null || revision !== token) return;
-        writeDesktopLayoutEnabled(view?.localStorage, pluginId, enabled);
-        apply(enabled);
-      })
-      .catch(() => {});
-  }
   const stopTrack = trackSidebarDepth(doc);
   return () => {
-    revision += 1;
-    view?.removeEventListener?.(DESKTOP_LAYOUT_EVENT, onLayout);
     view?.removeEventListener?.(SIDEBAR_CHROME_EVENT, onChrome);
     stopTrack();
     style.remove();
@@ -1013,7 +980,7 @@ function trackSidebarDepth(doc: Document): () => void {
     const element = asElement(event.target);
     const viewport = element?.closest(TAB_VIEWPORT) ?? null;
     const touch = touches?.[0];
-    if (touch === undefined || viewport === null || touches.length !== 1) {
+    if (touch === undefined || viewport === null || touches?.length !== 1) {
       tabSwipe = null;
       return;
     }

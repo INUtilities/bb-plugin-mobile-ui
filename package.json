@@ -1,14 +1,14 @@
 {
   "name": "bb-plugin-sidebar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "bb": ">=0.44",
-    "bbPluginSdk": ">=0.6.5"
+    "bbPluginSdk": ">=0.6.39"
   },
   "bb": {
     "name": "Sidebar",
-    "description": "\uc67c\ucabd \uc0ac\uc774\ub4dc\ubc14\uc640 \uc6b0\uce21 \ud328\ub110\uc774 \uc5f4\ub9ac\uace0 \ub2eb\ud790 \ub54c \uac19\uc740 \uae4a\uc774\ub85c \ub4e4\uc5b4\uc624\uace0 \ub098\uac04\ub2e4.",
+    "description": "워크스페이스 탭으로 열린 페인과 배치를 기억하고 사이드바·화면 사이를 여백과 둥근 모서리로 구분합니다.",
     "branding": {
       "icon": "PanelLeft"
     },
@@ -30,8 +30,12 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@get-bb/plugin-sdk": "0.6.5",
+    "@get-bb/plugin-sdk": "0.6.39",
+    "@types/jsdom": "^21.1.7",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.3.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.2.0",
     "typescript": "^5.7.0"
   },
   "license": "MIT"

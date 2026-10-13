@@ -1445,12 +1445,13 @@ describe("injectSidebarDepth", () => {
     assert.match(nodes[0].textContent, /--bb-motion-right-depth/);
     assert.match(nodes[0].textContent, /720ms/);
     assert.doesNotMatch(nodes[0].textContent, /transform 420ms/);
-    assertSlideInFromHalfway(nodes[0].textContent);
+    assert.doesNotMatch(nodes[0].textContent, /bb-sidebar-desktop-card/);
+    assert.match(nodes[0].textContent, /bb-sidebar-phone-shelf/);
     stop();
     assert.equal(nodes.length, 0);
   });
 
-  it("omits the desktop card when the stored layout is off and restores it from the event", () => {
+  it("ignores the removed card preference and keeps the device lifecycle active", () => {
     const values = new Map<string, string>([["sidebar:desktop-layout", "off"]]);
     const listeners = new Map<string, (event: Event) => void>();
     const nodes: { id: string; textContent: string }[] = [];
@@ -1501,7 +1502,8 @@ describe("injectSidebarDepth", () => {
     const event = new Event("bb-sidebar-desktop-layout");
     Object.assign(event, { detail: { pluginId: "sidebar", enabled: true } });
     listeners.get("bb-sidebar-desktop-layout")?.(event);
-    assert.match(nodes[0]?.textContent ?? "", /bb-sidebar-desktop-card/);
+    assert.doesNotMatch(nodes[0]?.textContent ?? "", /bb-sidebar-desktop-card/);
+    assert.equal(listeners.has("bb-sidebar-desktop-layout"), false);
     stop();
     assert.equal(listeners.size, 0);
   });
