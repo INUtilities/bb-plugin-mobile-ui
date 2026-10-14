@@ -1,4 +1,7 @@
 import { listPanes, readNativeLayout, type NativeLayout } from "./workspaces.ts";
+import { EASE } from "./motion.ts";
+
+const FADE_MS = 120;
 
 // 네이티브 드래그·사이드바 전환 중 원래 DOM을 유지한 채 플레이스홀더를 표시한다.
 export function mountPaneDragPlaceholders(doc: Document): () => void {
@@ -10,6 +13,8 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
   let armed = false;
   let dragging = false;
   let moving = false;
+  let fading = false;
+  let fadeTimer: number | undefined;
   let watchdog: number | undefined;
   let settleTimer: number | undefined;
   const style = doc.createElement("style");
@@ -18,7 +23,11 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
 [data-sidebar-drag-pane] > :not([data-sidebar-pane-placeholder]),
 [data-sidebar-drag-pane] > :not([data-sidebar-pane-placeholder]) * { visibility:hidden !important; }
 [data-sidebar-motion-pane] > :not([data-sidebar-pane-placeholder]) { content-visibility:hidden !important; contain-intrinsic-size:var(--sidebar-placeholder-size); }
-[data-sidebar-drag-pane] > [data-sidebar-pane-placeholder] { position:absolute; inset:4px; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:24px; border-radius:18px; background:var(--sidebar); color:var(--muted-foreground); pointer-events:none; }
+[data-sidebar-pane-placeholder] { position:absolute; inset:4px; z-index:60; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:24px; border-radius:18px; background:var(--sidebar); color:var(--muted-foreground); pointer-events:none; opacity:1; transition:opacity ${FADE_MS}ms ${EASE.out}; }
+[data-sidebar-motion-pane] > [data-sidebar-pane-placeholder] { animation:sidebar-placeholder-in ${FADE_MS}ms ${EASE.out}; }
+[data-sidebar-pane-placeholder][data-sidebar-placeholder-leaving] { opacity:0; }
+@keyframes sidebar-placeholder-in { from { opacity:0; } to { opacity:1; } }
+@media (prefers-reduced-motion: reduce) { [data-sidebar-pane-placeholder] { animation:none !important; transition:none !important; } }
 [data-sidebar-pane-placeholder-icon] { width:32px; height:32px; flex-shrink:0; }
 [data-sidebar-pane-placeholder-icon] > :is(svg, span, img) { width:32px !important; height:32px !important; }
 [data-sidebar-pane-placeholder-title] { max-width:100%; font-size:14px; line-height:1.5; text-align:center; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
@@ -38,6 +47,7 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
     return icon;
   };
   const show = (): void => {
+    view.clearTimeout(fadeTimer); fading = false;
     let layout: NativeLayout | null = null;
     try { layout = readNativeLayout(view.sessionStorage.getItem("bb.splitLayout") ?? view.localStorage.getItem("bb.splitLayout")); } catch { /* 저장소가 차단된 창에서는 기본 아이콘을 쓴다. */ }
     const contents = new Map(layout ? listPanes(layout.root).map(pane => [pane.paneId, pane.content]) : []);
@@ -53,7 +63,9 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
         }
         pane.dataset.sidebarMotionPane = '';
       }
-      if (placeholders.has(pane)) continue;
+      pane.dataset.sidebarDragPane = '';
+      const existing = placeholders.get(pane);
+      if (existing) { delete existing.dataset.sidebarPlaceholderLeaving; continue; }
       const placeholder = doc.createElement("div");
       placeholder.dataset.sidebarPanePlaceholder = "";
       placeholder.setAttribute("aria-hidden", "true");
@@ -74,8 +86,18 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
       placeholders.set(pane, placeholder);
     }
   };
-  const clearIfIdle = (): void => {
-    if (dragging || moving) return;
+  const clearIfIdle = (fade = false, force = false): void => {
+    if (dragging || moving || (fading && !force)) return;
+    if (fade && placeholders.size && !view.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      fading = true;
+      for (const [pane, placeholder] of placeholders) {
+        delete pane.dataset.sidebarDragPane;
+        placeholder.dataset.sidebarPlaceholderLeaving = '';
+      }
+      fadeTimer = view.setTimeout(() => { fading = false; clearIfIdle(); }, FADE_MS);
+      return;
+    }
+    view.clearTimeout(fadeTimer); fading = false;
     for (const [pane, placeholder] of placeholders) {
       placeholder.remove();
       delete pane.dataset.sidebarDragPane;
@@ -85,7 +107,7 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
   const finishDrag = (): void => {
     armed = false; dragging = false; observer.disconnect(); clearIfIdle();
   };
-  const finishMotion = (): void => {
+  const finishMotion = (fade = false): void => {
     view.clearTimeout(watchdog); view.clearTimeout(settleTimer);
     transitions.clear(); moving = false;
     for (const pane of placeholders.keys()) delete pane.dataset.sidebarMotionPane;
@@ -93,7 +115,7 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
       if (old.size) child.style.setProperty('--sidebar-placeholder-size', old.size, old.priority);
       else child.style.removeProperty('--sidebar-placeholder-size');
     }
-    frozen.clear(); clearIfIdle();
+    frozen.clear(); clearIfIdle(fade, !fade);
   };
   const finish = (): void => { finishMotion(); finishDrag(); };
   const startMotion = (): void => {
@@ -123,7 +145,7 @@ export function mountPaneDragPlaceholders(doc: Document): () => void {
       properties?.delete(event.propertyName);
       if (!properties?.size) transitions.delete(target);
       // 역방향 전환의 cancel → run이 같은 프레임에 이어져도 깜박이지 않는다.
-      if (transitions.size === 0) settleTimer = view.setTimeout(finishMotion, 0);
+      if (transitions.size === 0) settleTimer = view.setTimeout(() => finishMotion(true), 0);
     }
   };
   const observer = new view.MutationObserver(() => {

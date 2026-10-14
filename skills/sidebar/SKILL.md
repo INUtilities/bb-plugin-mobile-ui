@@ -24,10 +24,13 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 - `app.tsx`: 콘텐츠 스크립트와 기기·설정 브리지 등록.
 - `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
 - `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
+- `lib/motion.ts`: kit에서 그대로 복사한 공용 모션. 복사본은 고치지 않는다.
 
-데스크톱의 좌우 사이드바 열기·닫기는 BB의 기본 트랜지션을 유지한다. 사이드바 전환에만 본문 wrapper의 `content-visibility:hidden`과 시작 시 한 번 측정한 intrinsic size를 사용해 렌더링을 생략한다. 네이티브 width/flex transition 이벤트로 시작·종료를 감지하고, 연속 반전·드래그 중첩·종료 이벤트 누락·blur·dispose에서도 복원해야 한다. 매 프레임 본문을 측정하지 않는다. 개별 페인의 확장·복원은 즉시 반영하고, `prefers-reduced-motion`에서는 사이드바 전환과 해당 플레이스홀더를 생략한다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다.
+데스크톱의 좌우 사이드바 열기·닫기는 네이티브 width/flex 속성을 유지하고 시간을 320ms, 곡선을 kit의 `EASE.out`으로 맞춘다. 왼쪽 본문의 닫힘 visibility 지연도 320ms로 맞춘다. 사이드바 전환에만 본문 wrapper의 `content-visibility:hidden`과 시작 시 한 번 측정한 intrinsic size를 사용해 렌더링을 생략한다. 매 프레임 본문을 측정하지 않는다.
 
-탭바 위에는 4px의 추가 여백을 둔다. native title bar에서는 행 높이와 framed shell의 시작 위치를 함께 늘리고, 웹에서는 탭바 위 padding과 왼쪽 표면의 시작 위치를 함께 늘린다. 행 안에서 탭은 2px, native title bar의 history·좌우 토글 버튼은 8px 위로 정렬한다. 탭바 아래 페인까지의 기존 4px 간격은 유지한다.
+네이티브 transition 이벤트로 시작·종료를 감지한다. 플레이스홀더는 120ms로 나타나며, 전환 종료 시 본문을 바로 복원한 뒤 덮개만 120ms로 사라진다. 덮개 배경은 페인 본문의 투명 배경 규칙에서 제외한다. fade 도중 재토글하면 같은 덮개를 재사용하고 이전 정리 타이머를 취소한다. 드래그 수명과 분리하며, 종료 이벤트 누락·blur·dispose에서는 fade를 기다리지 않고 복원한다. 개별 페인의 확장·복원은 즉시 반영하고, `prefers-reduced-motion`에서는 사이드바 전환과 해당 플레이스홀더를 생략한다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다.
+
+탭바 위에는 4px의 추가 여백을 둔다. native title bar의 높이는 유지하고 framed shell의 시작 위치는 행 높이 + 2px로 둔다. 웹에서는 탭바 아래 margin을 -2px로 두고 왼쪽 표면도 2px 올린다. 행 안에서 탭은 2px, native title bar의 history·좌우 토글 버튼은 8px 위로 정렬한다. 탭과 버튼의 위치를 유지한 채 아래 표면까지의 바깥 간격만 2px로 줄인다.
 
 왼쪽 사이드바 본문은 panel의 `--sidebar-width`에서 리본과 4px 여백을 뺀 고정 폭을 유지한다. `--sidebar-width`는 하위에서 초기값으로 돌아가므로 panel에서 계산한 값을 `--sidebar-slide-width`로 상속한다. 네이티브 `right:0`과 바깥 clip으로 통째로 미끄러지며 리본은 움직이지 않는다. 본문에 `max-width:100%`를 적용하면 전환 중 내용이 찌그러진다. 오른쪽은 BB의 기존 고정 폭 슬라이드를 유지한다.
 

@@ -61,7 +61,7 @@
 
 **drag placeholder:** 현재 `visibility: hidden`을 내용과 하위 element에 적용하고 아이콘·제목만 덧붙인다. 본문 DOM은 유지하지만 React·timer·subscription은 그대로다. observer는 실제 pane drag가 시작될 때 body의 직접 자식만 관찰하므로, streaming 전체 subtree observer가 현재 비용 원인은 아니다. 더 강한 render 생략을 실험한다면 pane 전체가 아니라 내용 wrapper에 한정하고 native ghost·drop target·placeholder는 남겨야 한다. [pane-drag.ts](../lib/pane-drag.ts)
 
-**사이드바 전환에 적용한 개선:** 좌우 사이드바가 열리고 닫힐 때 같은 플레이스홀더를 표시하고, 내용 wrapper에 `content-visibility:hidden`을 적용한다. 시작 시 한 번 읽은 크기를 `contain-intrinsic-size`로 유지하며 매 프레임 본문을 읽지 않는다. width/flex transition 종료·취소, blur, dispose, 1초 안전 타이머로 해제하고, 동작 줄이기 설정에서는 생략한다. 이 속성은 내부 layout·paint를 건너뛰지만 React·timer·서버 실행은 계속된다. 실제 앱의 FPS 개선 폭과 Browser·Terminal 네이티브 표면은 별도 검증이 필요하다. [pane-drag.ts](../lib/pane-drag.ts), [Chrome의 content-visibility 설명](https://web.dev/articles/content-visibility)
+**사이드바 전환에 적용한 개선:** 좌우 사이드바의 native width/flex 전환을 320ms 감속으로 맞추고 같은 플레이스홀더를 120ms fade로 표시한다. 내용 wrapper에 `content-visibility:hidden`을 적용하고, 시작 시 한 번 읽은 크기를 `contain-intrinsic-size`로 유지하며 매 프레임 본문을 읽지 않는다. 전환 종료 시 본문은 바로 복원하고 덮개만 fade-out한다. blur, dispose, 1초 안전 타이머는 즉시 정리하며, fade 도중 재토글하면 이전 정리를 취소한다. 동작 줄이기 설정에서는 생략한다. 이 속성은 내부 layout·paint를 건너뛰지만 React·timer·서버 실행은 계속된다. 실제 앱의 FPS 개선 폭과 Browser·Terminal 네이티브 표면은 별도 검증이 필요하다. [pane-drag.ts](../lib/pane-drag.ts), [Chrome의 content-visibility 설명](https://web.dev/articles/content-visibility)
 
 **이미 제거한 작업:** desktop에서 phone용 720ms geometry 추적을 돌리지 않는다. 후속 사용자 요청으로 사이드바의 네이티브 width/flex transition은 복원했으므로, 이 비용은 실제 화면에서 다시 측정해야 한다. 개별 페인의 확장은 즉시 반영한다. active ring의 220ms opacity 변화는 다른 종류이며, 현재 병목 근거 없이 제거할 이유가 없다. [sidebar-depth.ts](../lib/sidebar-depth.ts), [workspace-chrome.ts](../lib/workspace-chrome.ts)
 

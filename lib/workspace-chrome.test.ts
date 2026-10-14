@@ -197,13 +197,13 @@ test("desktop clears the native inset and content shell backgrounds", (t) => {
  for(const e of doc.querySelectorAll('[data-sidebar="inset"],[data-app-content-shell]')) assert.equal(dom.window.getComputedStyle(e).backgroundColor,"rgba(0, 0, 0, 0)");
 });
 
-test("desktop preserves native sidebar transitions while pane geometry stays instant", (t) => {
+test("desktop shares sidebar timing while native transition properties and pane geometry stay intact", (t) => {
  const dom=page(),doc=dom.window.document;
- doc.head.innerHTML='<style>[data-layout-motion] { transition:width .72s, flex-grow .22s, opacity .22s; } button { transition:background-color .15s; }</style>';
+ doc.head.innerHTML='<style>[data-layout-motion] { transition:width .72s, flex-grow .22s, opacity .22s; } [data-split-resize-grid-root] { --panel-collapse-duration:220ms; } button { transition:background-color .15s; }</style>';
  doc.body.innerHTML=`<div data-sidebar="gap" data-layout-motion></div>
  <div data-sidebar="panel" data-layout-motion><div data-sidebar="collapsible-body" data-layout-motion></div></div>
  <main data-sidebar="inset" data-layout-motion><div data-app-content-shell>
-  <div data-split-resize-grid-root style="--panel-collapse-duration:220ms">
+  <div data-split-resize-grid-root data-panel-group>
    <div data-panel data-layout-motion><div data-split-pane-id="chat" data-layout-motion><button>Composer</button></div></div>
    <div data-panel-resize-handle-id="resize" data-layout-motion></div>
    <div data-panel data-layout-motion><aside><div data-split-pane-id="plugin" data-layout-motion></div></aside></div>
@@ -211,8 +211,10 @@ test("desktop preserves native sidebar transitions while pane geometry stays ins
  </div></main>`;
  const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"desktop",navigate:()=>{}});
  t.after(()=>{stop();dom.window.close();});
- for(const element of doc.querySelectorAll('[data-layout-motion]:not([data-split-pane-id])')) assert.equal(dom.window.getComputedStyle(element).transition,"width .72s, flex-grow .22s, opacity .22s",element.outerHTML.slice(0,100));
+ for(const element of doc.querySelectorAll('[data-layout-motion]:not([data-split-pane-id], [data-sidebar="gap"], [data-sidebar="panel"])')) assert.equal(dom.window.getComputedStyle(element).transition,"width .72s, flex-grow .22s, opacity .22s",element.outerHTML.slice(0,100));
+ assert.match(dom.window.getComputedStyle(doc.querySelector('[data-sidebar="gap"]')!).transition, /^width 320ms cubic-bezier/);
+ assert.match(dom.window.getComputedStyle(doc.querySelector('[data-sidebar="panel"]')!).transition, /width 320ms cubic-bezier/);
  for(const element of doc.querySelectorAll('[data-split-pane-id]')) assert.equal(dom.window.getComputedStyle(element).transition,"none");
- assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-resize-grid-root]')!).getPropertyValue("--panel-collapse-duration"),"220ms");
+ assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-resize-grid-root]')!).getPropertyValue("--panel-collapse-duration"),"320ms");
  assert.equal(dom.window.getComputedStyle(doc.querySelector('[data-split-pane-id] button')!).transition,"background-color .15s");
 });

@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { mountWorkspaceChrome } from "./workspace-chrome.ts";
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+const fade = () => new Promise(resolve => setTimeout(resolve, 140));
 function fixture() {
   const dom = new JSDOM(`<div data-app-content-shell>
     <div data-split-pane-id="chat"><div data-original>
@@ -58,7 +59,7 @@ test("sidebar toggles prepare placeholders before the host click and restore the
   transition(f, 'transitionrun');
   f.dom.window.dispatchEvent(new f.dom.window.Event('pointerup'));
   assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3, 'releasing the toggle must not finish the transition');
-  transition(f, 'transitionend'); await settle();
+  transition(f, 'transitionend'); await fade();
   assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
   assert.equal(original.isConnected, true);
   assert.notEqual(f.dom.window.getComputedStyle(original).contentVisibility, 'hidden');
@@ -74,7 +75,7 @@ test("sidebar transitions from keyboard or host state wait for both sides and su
   transition(f, 'transitionrun');
   transition(f, 'transitionend', '[data-panel]', 'flex-grow'); await settle();
   assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3);
-  transition(f, 'transitionend'); await settle();
+  transition(f, 'transitionend'); await fade();
   assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
 });
 
@@ -111,6 +112,56 @@ test("sidebar placeholders recover if a transition end never arrives", t => {
   assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
   assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 0);
 });
+
+test("sidebar motion restores content before its covering placeholder fades away", t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  t.mock.timers.enable({ apis:['setTimeout'] });
+  // JSDOM은 테마 var()를 색으로 풀지 않으므로 실제 표면색을 fixture에 제공한다.
+  f.doc.head.insertAdjacentHTML('afterbegin', '<style>[data-sidebar-pane-placeholder] { background-color:rgb(30,30,46); }</style>');
+  const original = f.doc.querySelector<HTMLElement>('[data-original]')!;
+  transition(f, 'transitionrun');
+  const placeholder = f.doc.querySelector('[data-sidebar-pane-placeholder]')!;
+  assert.notEqual(f.dom.window.getComputedStyle(placeholder).backgroundColor, 'rgba(0, 0, 0, 0)', 'overlay must cover restored content during its fade');
+  transition(f, 'transitionend'); t.mock.timers.tick(1);
+  assert.equal(original.isConnected, true);
+  assert.notEqual(f.dom.window.getComputedStyle(original).contentVisibility, 'hidden');
+  assert.equal(placeholder.isConnected, true);
+  assert.equal(placeholder.hasAttribute('data-sidebar-placeholder-leaving'), true);
+  t.mock.timers.tick(150);
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+});
+
+test("a sidebar toggle during placeholder fade reuses the overlay and cancels stale cleanup", t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  t.mock.timers.enable({ apis:['setTimeout'] });
+  transition(f, 'transitionrun'); transition(f, 'transitionend'); t.mock.timers.tick(1);
+  const placeholder = f.doc.querySelector('[data-sidebar-pane-placeholder]')!;
+  assert.ok(placeholder);
+  transition(f, 'transitionrun');
+  assert.equal(f.doc.querySelector('[data-sidebar-pane-placeholder]'), placeholder);
+  assert.equal(placeholder.hasAttribute('data-sidebar-placeholder-leaving'), false);
+  assert.equal(f.dom.window.getComputedStyle(f.doc.querySelector('[data-original]')!).contentVisibility, 'hidden');
+  t.mock.timers.tick(160);
+  assert.equal(placeholder.isConnected, true);
+  transition(f, 'transitionend'); t.mock.timers.tick(1); t.mock.timers.tick(150);
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+});
+
+for (const end of ['blur', 'dispose', 'reduced-motion']) {
+  test(`sidebar placeholder fade releases immediately on ${end}`, t => {
+    const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+    t.mock.timers.enable({ apis:['setTimeout'] });
+    transition(f, 'transitionrun');
+    if (end === 'reduced-motion') Object.defineProperty(f.dom.window, 'matchMedia', { value:() => ({ matches:true }) });
+    transition(f, 'transitionend'); t.mock.timers.tick(1);
+    if (end === 'dispose') f.stop();
+    else if (end === 'blur') f.dom.window.dispatchEvent(new f.dom.window.Event('blur'));
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 0);
+    t.mock.timers.tick(1500);
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+  });
+}
 
 for (const end of ['blur', 'dispose']) {
   test(`sidebar placeholders release frozen content on ${end}`, t => {
