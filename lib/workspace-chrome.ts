@@ -21,7 +21,7 @@ export const WORKSPACE_CHROME_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] > [data-sidebar-workspace-bar] { padding-top:4px; }
 :root:not([data-bb-sidebar-phone]) [data-testid="app-window-title-bar"]:has([data-sidebar-workspace-bar]) { height:calc(var(--bb-app-chrome-row-height) + 4px); padding-top:4px; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar-workspaces] { position:relative; top:-2px; }
-:root:not([data-bb-sidebar-phone]) [data-testid="app-window-title-bar"]:has([data-sidebar-workspace-bar]) > :not([data-sidebar-workspace-bar]) { position:relative; top:-6px; }
+:root:not([data-bb-sidebar-phone]) [data-testid="app-window-title-bar"]:has([data-sidebar-workspace-bar]) > :not([data-sidebar-workspace-bar]) { position:relative; top:-8px; }
 /* 사이드바는 네이티브 전환을 유지하고, 개별 페인의 확장은 즉시 반영한다. */
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { transition:none !important; }
 :root:not([data-bb-sidebar-phone]) [data-testid="app-layout-root"][data-framed] { --bb-window-frame-lip:0px; --bb-window-frame-top:calc(var(--bb-app-chrome-row-height) + 4px); padding-top:var(--bb-window-frame-top); }
