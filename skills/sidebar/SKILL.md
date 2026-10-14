@@ -26,13 +26,13 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 - `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
 - `lib/motion.ts`: kit에서 그대로 복사한 공용 모션. 복사본은 고치지 않는다.
 
-데스크톱의 좌우 사이드바 열기·닫기는 네이티브 width/flex 속성을 유지하고 시간을 320ms, 곡선을 kit의 `EASE.out`으로 맞춘다. 왼쪽 본문의 닫힘 visibility 지연도 320ms로 맞춘다. 사이드바 전환에만 본문 wrapper의 `content-visibility:hidden`과 시작 시 한 번 측정한 intrinsic size를 사용해 렌더링을 생략한다. 매 프레임 본문을 측정하지 않는다.
+데스크톱의 좌우 사이드바 열기·닫기는 네이티브 width/flex 속성과 320ms를 유지한다. 왼쪽은 kit의 `EASE.exit`(`cubic-bezier(.4,0,.2,1)`), 오른쪽은 `EASE.out`을 쓴다. 왼쪽 본문의 닫힘 visibility 지연도 320ms로 맞춘다. 사이드바 전환에만 본문 wrapper의 `content-visibility:hidden`과 시작 시 한 번 측정한 intrinsic size를 사용해 렌더링을 생략한다. 매 프레임 본문을 측정하지 않는다.
 
 네이티브 transition 이벤트로 시작·종료를 감지한다. 플레이스홀더는 120ms로 나타나며, 전환 종료 시 본문을 바로 복원한 뒤 덮개만 120ms로 사라진다. 덮개 배경은 페인 본문의 투명 배경 규칙에서 제외한다. fade 도중 재토글하면 같은 덮개를 재사용하고 이전 정리 타이머를 취소한다. 드래그 수명과 분리하며, 종료 이벤트 누락·blur·dispose에서는 fade를 기다리지 않고 복원한다. 개별 페인의 확장·복원은 즉시 반영하고, `prefers-reduced-motion`에서는 사이드바 전환과 해당 플레이스홀더를 생략한다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다.
 
 탭바 위에는 4px의 추가 여백을 둔다. native title bar의 높이는 유지하고 framed shell의 시작 위치는 행 높이 + 2px로 둔다. 웹에서는 탭바 아래 margin을 -2px로 두고 왼쪽 표면도 2px 올린다. 행 안에서 탭은 2px, native title bar의 history·좌우 토글 버튼은 8px 위로 정렬한다. 탭과 버튼의 위치를 유지한 채 아래 표면까지의 바깥 간격만 2px로 줄인다.
 
-왼쪽 사이드바 본문은 panel의 `--sidebar-width`에서 리본과 4px 여백을 뺀 고정 폭을 유지한다. `--sidebar-width`는 하위에서 초기값으로 돌아가므로 panel에서 계산한 값을 `--sidebar-slide-width`로 상속한다. 네이티브 `right:0`과 바깥 clip으로 통째로 미끄러지며 리본은 움직이지 않는다. 본문에 `max-width:100%`를 적용하면 전환 중 내용이 찌그러진다. 오른쪽은 BB의 기존 고정 폭 슬라이드를 유지한다.
+왼쪽 사이드바 본문은 panel의 `--sidebar-width`에서 리본과 4px 여백을 뺀 고정 폭을 유지한다. `--sidebar-width`는 하위에서 초기값으로 돌아가므로 panel에서 계산한 값을 `--sidebar-slide-width`로 상속한다. 본문은 absolute, 푸터는 relative wrapper인 차이가 있어 둘 다 `left:0; right:auto`에 둔다. 리본·본문·푸터는 제자리에 있고 바깥 clip과 화면이 움직인다. 본문에 `max-width:100%`를 적용하면 전환 중 내용이 찌그러진다. 오른쪽은 BB의 기존 고정 폭 슬라이드를 유지한다. 이 구조만으로 CPU 감소를 보장하지 않는다.
 
 기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 두 복사본은 고치지 않는다. 데스크톱의 좁은 창을 phone으로 취급하지 않는다. 색은 현재 BB 테마 토큰만 쓴다. 스레드 목록의 행 테마와 다른 플러그인 설정은 건드리지 않는다.
 
@@ -42,7 +42,7 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 
 BB의 첫 1→2 분할은 단일 페인 렌더에서 분할 트리 렌더로 바뀌며 채팅을 다시 마운트한다. 문서 재로드 제거와 네이티브 컴포넌트 마운트 유지를 구분해서 보고한다.
 
-현재 SDK에는 전체 배치 복원 API가 없다. 워크스페이스 탭 추가·전환·활성 탭 닫기에만 재초기화가 남아 있다. `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
+SDK 0.6.42의 `useSidebarSplitLayout()`은 읽기 전용이며 전체 배치 복원 API는 없다. route·layout 전체(focus 포함)·maximize가 모두 같으면 탭 선택과 저장만 갱신하고 native 저장값 쓰기와 navigation을 생략한다. 하나라도 다르면 `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 500ms checkpoint는 raw 입력과 activeId가 같으면 snapshot을 재사용하고 clone·직렬화를 생략한다. 저장 실패는 같은 직렬화 결과로 다음 checkpoint에 재시도한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
 
 탭 목록은 현재 창의 `sessionStorage`에만 둔다. 앱 재로드에서는 유지하고 새 세션에서는 기본 탭부터 시작한다. 플러그인 내부 메모리 상태나 Browser·Terminal 네이티브 뷰의 연속 마운트를 보장한다고 보고하지 않는다.
 

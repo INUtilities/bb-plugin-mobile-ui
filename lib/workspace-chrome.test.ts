@@ -113,6 +113,73 @@ test("new workspace is empty and the old workspace restores after a client remou
  assert.equal(navigations.at(-1),"/plugins/issues/tasks/all");stop();dom.window.close();
 });
 
+test("equivalent workspace tabs switch without navigation, native writes, or content replacement", t => {
+ const dom=page(),doc=dom.window.document;
+ const snapshot={route:'/',layout:null,maximizedPaneId:null};
+ dom.window.sessionStorage.setItem('sidebar:workspaces:v1',JSON.stringify({version:1,activeId:'one',nextNumber:3,tabs:[{id:'one',name:'One',snapshot},{id:'two',name:'Two',snapshot}]}));
+ const content=doc.createElement('div');doc.querySelector('[data-app-content-shell]')!.append(content);
+ const stop=mountWorkspaceChrome(doc,{pluginId:'sidebar',device:'desktop',navigate:()=>assert.fail('equivalent snapshot must not navigate')});
+ t.after(()=>{stop();dom.window.close();});
+ const nativeWrites:string[]=[];
+ const prototype=Object.getPrototypeOf(dom.window.sessionStorage),setItem=prototype.setItem;
+ t.mock.method(prototype,'setItem',function(this:Storage,key:string,value:string){if(key.startsWith('bb.splitLayout'))nativeWrites.push(key);return setItem.call(this,key,value);});
+ doc.querySelector<HTMLButtonElement>('[data-sidebar-workspace-tab="two"] [role=tab]')!.click();
+ assert.equal(doc.querySelector('[data-sidebar-workspace-tab="two"] [role=tab]')?.getAttribute('aria-selected'),'true');
+ assert.equal(content.isConnected,true);
+ assert.deepEqual(nativeWrites,[]);
+ doc.querySelector<HTMLButtonElement>('[data-sidebar-workspace-tab="one"] [role=tab]')!.click();
+ assert.equal(doc.querySelector('[data-sidebar-workspace-tab="one"] [role=tab]')?.getAttribute('aria-selected'),'true','switching must not stay locked');
+});
+
+for(const difference of ['route','layout','focus','maximize']) {
+ test(`workspace ${difference} differences still restore through native initialization`, t=>{
+  const dom=page(),doc=dom.window.document;
+  const root={type:'split',dir:'row',sizes:[0.5,0.5],children:[{type:'pane',paneId:'a',content:{kind:'new-thread'}},{type:'pane',paneId:'b',content:{kind:'new-thread'}}]};
+  const snapshot={route:'/',layout:{root,focusedPaneId:'a'},maximizedPaneId:null as string|null};
+  const target=structuredClone(snapshot);
+  if(difference==='route')target.route='/plugins/issues/tasks';
+  if(difference==='layout')target.layout.root.sizes=[0.4,0.6];
+  if(difference==='focus')target.layout.focusedPaneId='b';
+  if(difference==='maximize')target.maximizedPaneId='b';
+  dom.window.sessionStorage.setItem('bb.splitLayout',JSON.stringify({version:1,layout:snapshot.layout}));
+  dom.window.sessionStorage.setItem('sidebar:workspaces:v1',JSON.stringify({version:1,activeId:'one',nextNumber:3,tabs:[{id:'one',name:'One',snapshot},{id:'two',name:'Two',snapshot:target}]}));
+  const navigations:string[]=[];
+  const stop=mountWorkspaceChrome(doc,{pluginId:'sidebar',device:'desktop',navigate:route=>navigations.push(route)});
+  t.after(()=>{stop();dom.window.close();});
+  doc.querySelector<HTMLButtonElement>('[data-sidebar-workspace-tab="two"] [role=tab]')!.click();
+  assert.deepEqual(navigations,[target.route]);
+  assert.deepEqual(JSON.parse(dom.window.sessionStorage.getItem('bb.splitLayout')!).layout,target.layout);
+  assert.equal(dom.window.sessionStorage.getItem('bb.splitLayout.maximizedPaneId'),target.maximizedPaneId??'');
+ });
+}
+
+test("unchanged checkpoints avoid repeated cloning and serialization but still save native changes", t=>{
+ const dom=page(),doc=dom.window.document;let tick=()=>{};
+ t.mock.method(dom.window,'setInterval',(handler:()=>void)=>{tick=handler;return 1;});
+ const stop=mountWorkspaceChrome(doc,{pluginId:'sidebar',device:'desktop',navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ const clone=t.mock.method(globalThis,'structuredClone');
+ const stringify=t.mock.method(JSON,'stringify');
+ tick();tick();tick();
+ assert.equal(clone.mock.callCount(),0);
+ assert.equal(stringify.mock.callCount(),0);
+ dom.window.sessionStorage.setItem('bb.splitLayout',JSON.stringify({version:1,layout:{root:{type:'pane',paneId:'changed',content:{kind:'new-thread'}},focusedPaneId:'changed'}}));
+ tick();
+ assert.equal(clone.mock.callCount(),1);
+ assert.equal(JSON.parse(dom.window.sessionStorage.getItem('sidebar:workspaces:v1')!).tabs[0].snapshot.layout.focusedPaneId,'changed');
+});
+
+test("an unchanged checkpoint retries a failed session save without losing the snapshot", t=>{
+ const dom=page(),doc=dom.window.document;let tick=()=>{},attempts=0;
+ t.mock.method(dom.window,'setInterval',(handler:()=>void)=>{tick=handler;return 1;});
+ const prototype=Object.getPrototypeOf(dom.window.sessionStorage),setItem=prototype.setItem;
+ t.mock.method(prototype,'setItem',function(this:Storage,key:string,value:string){if(key==='sidebar:workspaces:v1'&&++attempts===1)throw new Error('temporary storage failure');return setItem.call(this,key,value);});
+ const stop=mountWorkspaceChrome(doc,{pluginId:'sidebar',device:'desktop',navigate:()=>{}});
+ t.after(()=>{stop();dom.window.close();});
+ assert.equal(attempts,1);tick();assert.equal(attempts,2);tick();assert.equal(attempts,2);
+ assert.equal(JSON.parse(dom.window.sessionStorage.getItem('sidebar:workspaces:v1')!).tabs[0].snapshot.route,'/');
+});
+
 test("phone never mounts workspace tabs or changes navigation and storage", (t) => {
  const dom=page(),doc=dom.window.document,push=dom.window.history.pushState;
  const stop=mountWorkspaceChrome(doc,{pluginId:"sidebar",device:"phone",navigate:()=>assert.fail("mobile must not navigate")});

@@ -24,9 +24,9 @@ export const WORKSPACE_CHROME_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-testid="app-window-title-bar"]:has([data-sidebar-workspace-bar]) { height:calc(var(--bb-app-chrome-row-height) + 4px); padding-top:4px; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar-workspaces] { position:relative; top:-2px; }
 :root:not([data-bb-sidebar-phone]) [data-testid="app-window-title-bar"]:has([data-sidebar-workspace-bar]) > :not([data-sidebar-workspace-bar]) { position:relative; top:-8px; }
-/* 좌우 전환은 같은 시간·감속을 쓰고, 개별 페인의 확장은 즉시 반영한다. */
-:root:not([data-bb-sidebar-phone]) [data-sidebar="gap"] { transition:width ${SLIDE_MS}ms ${EASE.out}; }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="panel"] { transition:left ${SLIDE_MS}ms ${EASE.out}, right ${SLIDE_MS}ms ${EASE.out}, width ${SLIDE_MS}ms ${EASE.out}, visibility 0s linear 0s; }
+/* 왼쪽은 표준 곡선으로 화면을 밀고, 오른쪽은 기존 감속을 유지한다. */
+:root:not([data-bb-sidebar-phone]) [data-sidebar="gap"] { transition:width ${SLIDE_MS}ms ${EASE.exit}; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="panel"] { transition:left ${SLIDE_MS}ms ${EASE.exit}, right ${SLIDE_MS}ms ${EASE.exit}, width ${SLIDE_MS}ms ${EASE.exit}, visibility 0s linear 0s; }
 :root:not([data-bb-sidebar-phone]) [data-collapsible="offcanvas"] > [data-sidebar="panel"] { transition-delay:0s, 0s, 0s, ${SLIDE_MS}ms; }
 :root:not([data-bb-sidebar-phone]) [data-collapsible="rail"] [data-sidebar="collapsible-body"] { transition:visibility 0s linear ${SLIDE_MS}ms; }
 :root:not([data-bb-sidebar-phone]) [data-split-resize-grid-root][data-panel-group] { --panel-collapse-duration:${SLIDE_MS}ms !important; }
@@ -40,9 +40,9 @@ export const WORKSPACE_CHROME_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-sidebar="inset"] { border-block-width:0; border-inline-end-width:0; }
 :root:not([data-bb-sidebar-phone]) [data-collapsible="rail"] ~ [data-sidebar="inset"] { border-inline-start-width:0; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:4px 4px 8px 0; border-radius:18px; overflow:clip; border-color:transparent; }
-/* 본문 폭을 유지하고 네이티브 right:0 고정으로 리본 옆에서 통째로 미끄러진다. */
+/* 본문·푸터는 같은 고정 위치에 두고 바깥 clip과 화면만 전환한다. */
 :root:not([data-bb-sidebar-phone]) [data-sidebar="panel"] { --sidebar-slide-width:calc(var(--sidebar-width) - var(--sidebar-rail-width, 0px) - 4px); }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] > div { width:var(--sidebar-slide-width) !important; max-width:none; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] > div { left:0; right:auto; width:var(--sidebar-slide-width) !important; max-width:none; }
 /* 웹의 탭바가 content shell 안에 있을 때만 왼쪽 표면도 그 높이만큼 내린다. */
 :root:not([data-bb-sidebar-phone]):has([data-app-content-shell] > [data-sidebar-workspace-bar]) [data-sidebar="collapsible-body"] { margin-top:calc(4px + 36px + 2px); }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
@@ -83,14 +83,39 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
   const key = `${options.pluginId}:workspaces:v1`;
   const read = (name: string): string | null => { try { return view.sessionStorage.getItem(name) ?? view.localStorage.getItem(name); } catch { return null; } };
   const route = (): string => view.location.hash.startsWith("#/") ? view.location.hash.slice(1) : view.location.pathname + view.location.search;
-  const capture = (): WorkspaceSnapshot => ({ route: route(), layout: readNativeLayout(read(LAYOUT_KEY)), maximizedPaneId: read(MAXIMIZED_KEY) || null });
+  let captured: WorkspaceSnapshot | undefined;
+  let capturedLayout: string | null | undefined;
+  let capturedMaximized: string | null | undefined;
+  const capture = (): WorkspaceSnapshot => {
+    const currentRoute = route(), layout = read(LAYOUT_KEY), maximized = read(MAXIMIZED_KEY);
+    if (!captured || captured.route !== currentRoute || capturedLayout !== layout || capturedMaximized !== maximized) {
+      captured = { route:currentRoute, layout:readNativeLayout(layout), maximizedPaneId:maximized || null };
+      capturedLayout = layout; capturedMaximized = maximized;
+    }
+    return captured;
+  };
   let state: WorkspaceState = decodeWorkspaces(read(key), capture());
   let openMode: OpenMode = "new-pane";
   let disposed = false;
   let switching = false;
   let saved = "";
-  const writeState = (): void => { const raw = JSON.stringify(state); if (raw === saved) return; try { view.sessionStorage.setItem(key, raw); saved = raw; } catch { /* 저장을 막은 창에서도 현재 세션의 탭은 유지한다. */ } };
-  const checkpoint = (): void => { if (switching || disposed) return; state = saveWorkspace(state, capture()); writeState(); };
+  let encodedState: WorkspaceState | undefined;
+  let encoded = "";
+  let checkpointSnapshot: WorkspaceSnapshot | undefined;
+  let checkpointId = "";
+  const writeState = (): void => {
+    if (state !== encodedState) { encoded = JSON.stringify(state); encodedState = state; }
+    if (encoded === saved) return;
+    try { view.sessionStorage.setItem(key, encoded); saved = encoded; } catch { /* 다음 checkpoint에서 같은 저장값으로 다시 시도한다. */ }
+  };
+  const checkpoint = (): void => {
+    if (switching || disposed) return;
+    const snapshot = capture();
+    if (snapshot !== checkpointSnapshot || state.activeId !== checkpointId) {
+      state = saveWorkspace(state, snapshot); checkpointSnapshot = snapshot; checkpointId = state.activeId;
+    }
+    writeState();
+  };
   const writeNative = (snapshot: WorkspaceSnapshot): void => {
     view.sessionStorage.setItem(LAYOUT_KEY, snapshot.layout === null ? "" : JSON.stringify({ version: 1, layout: snapshot.layout }));
     view.sessionStorage.setItem(MAXIMIZED_KEY, snapshot.maximizedPaneId ?? "");
@@ -105,7 +130,15 @@ export function mountWorkspaceChrome(doc: Document, options: WorkspaceChromeOpti
   const restore = (): void => {
     const selected = state.tabs.find(tab => tab.id === state.activeId);
     if (!selected) return;
-    try { switching = true; writeState(); writeNative(selected.snapshot); render(); navigate(selected.snapshot.route); }
+    try {
+      const current = capture();
+      const unchanged = current.route === selected.snapshot.route && current.maximizedPaneId === selected.snapshot.maximizedPaneId && JSON.stringify(current.layout) === JSON.stringify(selected.snapshot.layout);
+      switching = !unchanged; writeState();
+      if (!unchanged) writeNative(selected.snapshot);
+      render();
+      if (unchanged) { checkpointSnapshot = current; checkpointId = state.activeId; }
+      else navigate(selected.snapshot.route);
+    }
     catch (error) { switching = false; showError(error); }
   };
   const style = doc.createElement("style"); style.dataset.sidebarWorkspaceStyle = ""; style.textContent = WORKSPACE_CHROME_CSS; doc.head.append(style);

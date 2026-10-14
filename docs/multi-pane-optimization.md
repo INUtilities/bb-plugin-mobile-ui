@@ -27,7 +27,7 @@
 
 ### 탭 수와 페인 수는 다르게 늘어난다
 
-**확인:** Sidebar workspace 탭에는 route·layout tree·focus·maximize 정보만 있다. 비활성 탭의 실제 채팅 DOM을 미리 마운트해 두지 않는다. 탭 선택·추가·활성 탭 닫기는 native 저장값을 쓴 뒤 `location.reload()` 또는 `location.assign()`을 사용한다. 따라서 메모리 안의 화면·cache 재사용을 전환마다 잃을 수 있다. 반면 일반 페인 추가는 native modifier-click 경로이고 플러그인 재로드가 없다. [workspace-chrome.ts](../lib/workspace-chrome.ts), [현재 복원 계약](../README.md#복원-경계)
+**확인:** Sidebar workspace 탭에는 route·layout tree·focus·maximize 정보만 있다. 비활성 탭의 실제 채팅 DOM을 미리 마운트해 두지 않는다. 이 snapshot이 현재 화면과 전부 같으면 선택만 갱신하고 재로드를 생략한다. 다르면 native 저장값을 쓴 뒤 `location.reload()` 또는 `location.assign()`을 사용하므로 메모리 안의 화면·cache 재사용을 잃을 수 있다. 반면 일반 페인 추가는 native modifier-click 경로이고 플러그인 재로드가 없다. [workspace-chrome.ts](../lib/workspace-chrome.ts), [현재 복원 계약](../README.md#복원-경계)
 
 **확인:** native `SplitThreadArea`는 단일 pane일 때 `WorkspacePaneContent`를 바로 렌더하고, 여러 pane일 때는 split wrapper/tree 안에 렌더한다. 첫 1→2 분할은 React tree 위치가 바뀌는 구조다. 단순 `memo` 추가만으로 이 mount 경계가 사라지지는 않는다. 근거: `apps/app/src/views/thread-detail/SplitThreadArea.tsx:719` 및 `:889`.
 
@@ -53,9 +53,11 @@
 
 ### 플러그인 안에서 가능한 개선
 
-**배치 저장:** 지금은 500ms마다 native layout을 읽고 parse·검증한 뒤, 활성 snapshot을 `structuredClone`하고 모든 탭을 `JSON.stringify`한다. 저장값이 같을 때 생략하는 것은 `sessionStorage.setItem`뿐이다. raw layout·route·maximize 값이 직전과 같으면 그 앞 단계부터 반환하는 방식이 가장 작은 후보다. 저장 실패 뒤 재시도와 탭 전환 직전 checkpoint는 유지해야 한다. [workspace-chrome.ts](../lib/workspace-chrome.ts), [workspaces.ts](../lib/workspaces.ts)
+**적용한 배치 저장 개선:** 500ms마다 raw layout·route·maximize를 읽되 변하지 않으면 parse·검증 결과를 재사용한다. snapshot과 activeId가 같으면 clone·직렬화를 생략하며 저장 실패는 다음 checkpoint에 재시도한다. 웹에서 약 1.7초 관측 시 snapshot clone·workspace 직렬화·native layout parse가 각각 3회에서 0회로 줄었다. 이는 idle 반복 작업의 제거이며 서로 다른 배치의 재초기화 시간을 줄인 결과가 아니다. [workspace-chrome.ts](../lib/workspace-chrome.ts), [workspaces.ts](../lib/workspaces.ts)
 
-**SDK 이벤트 보조:** `useSidebarSplitLayout()`은 전체 목록을 하나의 subscription으로 읽지만, 제공하는 것은 pane rect·threadId·focus이며 단일 pane에서는 `null`이다. plugin route·전체 split tree·maximize 상태까지 주는 복원 API가 아니다. 이 hook을 dirty 신호로 쓰는 실험은 가능하지만, polling을 완전히 없앨 수 있다는 근거는 없다. resize마다 저장을 더 자주 하게 만들지 않도록 합쳐야 한다. 근거: SDK 선언 `:19625`, `:21475`.
+**적용한 동일 snapshot 전환 개선:** 웹의 서로 다른 배치 왕복 3회는 클릭→페인 준비가 930~1255ms였다. 동일 snapshot도 수정 전에는 reload로 1386~1622ms가 걸렸다. 수정 후 동일 snapshot 3회는 같은 document·채팅 DOM을 유지하며 선택을 0.1~0.4ms에 갱신했다. 이 값은 작은 headless 재현 표본이며 일반적인 배치 전환이나 실제 native 앱의 개선 수치로 확대하지 않는다.
+
+**SDK 이벤트 보조:** 공식 SDK 0.6.42의 `useSidebarSplitLayout()`을 다시 확인했다. 전체 목록을 하나의 subscription으로 읽지만 제공하는 것은 pane rect·threadId·focus이며 단일 pane에서는 `null`이다. plugin route·전체 split tree·maximize 상태를 쓰는 복원 API가 아니다. 이 hook을 dirty 신호로 쓰는 실험은 가능하지만, polling을 완전히 없앨 수 있다는 근거는 없다. resize마다 저장을 더 자주 하게 만들지 않도록 합쳐야 한다.
 
 **provider 아이콘:** `PaneDragThreadProviders`는 `useComposers()`를 사용한다. 이 hook은 composer 목록 또는 포함된 draft가 바뀔 때 호출 component를 다시 렌더한다고 명시한다. 표시에는 thread/provider 식별자만 필요하므로 stable props를 받는 자식과 아이콘 재사용을 먼저 검토할 수 있다. 실제 ProviderIcon subtree의 commit 횟수는 아직 측정하지 않았다. 원래 hook의 알림 자체를 줄이려면 좁은 metadata subscription이 필요하다. `experimental_useSidebarThreads`는 cache 공유 장점이 있지만 scope·archive 로딩에 따라 모든 열린 pane을 포함한다고 보장할 수 없어 무조건 대체하지 않는다. 근거: [app.tsx](../app.tsx), SDK 선언 `:21351–21379`.
 
