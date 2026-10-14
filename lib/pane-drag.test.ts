@@ -14,8 +14,8 @@ function fixture() {
       <header data-testid="app-page-header-content-row"><div class="cursor-grab"><span data-icon-root data-plugin-icon-asset="/codes.svg" style="mask-image:url(/codes.svg)"></span>Codes</div></header>
       <div data-bb-plugin-root data-bb-plugin="codes">Editor</div>
     </div></div>
-    <div data-panel><aside><div data-original><div data-testid="secondary-panel-tab-strip"><button aria-pressed="true"><svg data-icon-root data-icon="Terminal"></svg>Terminal</button></div>Right panel</div></aside></div>
-  </div><button id="outside">Sidebar</button>`, { url: "https://bb.test/" });
+    <div data-split-resize-grid-root data-panel-group><div data-panel><aside><div data-original><div data-testid="secondary-panel-tab-strip"><button aria-pressed="true"><svg data-icon-root data-icon="Terminal"></svg>Terminal</button></div>Right panel</div></aside></div></div>
+  </div><div data-sidebar="gap"></div><button id="outside">Sidebar</button><button id="toggle" aria-label="Toggle sidebar (⌘ B)">Toggle</button>`, { url: "https://bb.test/" });
   const doc = dom.window.document;
   const stop = mountWorkspaceChrome(doc, { pluginId: "sidebar", device: "desktop", navigate: () => assert.fail("drag must not navigate") });
   const down = (selector = '.cursor-grab', button = 0) => doc.querySelector(selector)!.dispatchEvent(new dom.window.MouseEvent("pointerdown", { bubbles: true, button }));
@@ -39,6 +39,90 @@ test("engaged pane drags replace all visible surfaces with icons without detachi
   assert.ok(f.doc.querySelector('[data-split-pane-id="chat"] [data-sidebar-pane-placeholder] svg'));
   assert.ok(f.doc.querySelector('aside [data-sidebar-pane-placeholder] [data-icon="Terminal"]'));
 });
+
+function transition(f: ReturnType<typeof fixture>, type: string, selector = '[data-sidebar="gap"]', property = 'width') {
+  const event = new f.dom.window.Event(type, { bubbles:true });
+  Object.defineProperty(event, 'propertyName', { value:property });
+  f.doc.querySelector(selector)!.dispatchEvent(event);
+}
+
+test("sidebar toggles prepare placeholders before the host click and restore the same content after motion", async t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  const original = f.doc.querySelector<HTMLElement>('[data-original]')!;
+  const input = f.doc.querySelector('textarea')!; input.value = 'keep this draft';
+  let duringClick = 0;
+  f.doc.querySelector('#toggle')!.addEventListener('click', () => { duringClick = f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length; });
+  f.doc.querySelector<HTMLButtonElement>('#toggle')!.click();
+  assert.equal(duringClick, 3);
+  assert.equal(f.dom.window.getComputedStyle(original).contentVisibility, 'hidden');
+  transition(f, 'transitionrun');
+  f.dom.window.dispatchEvent(new f.dom.window.Event('pointerup'));
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3, 'releasing the toggle must not finish the transition');
+  transition(f, 'transitionend'); await settle();
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+  assert.equal(original.isConnected, true);
+  assert.notEqual(f.dom.window.getComputedStyle(original).contentVisibility, 'hidden');
+  assert.equal(input.value, 'keep this draft');
+});
+
+test("sidebar transitions from keyboard or host state wait for both sides and survive reversal", async t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  transition(f, 'transitionrun');
+  transition(f, 'transitionrun', '[data-panel]', 'flex-grow');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3);
+  transition(f, 'transitioncancel');
+  transition(f, 'transitionrun');
+  transition(f, 'transitionend', '[data-panel]', 'flex-grow'); await settle();
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3);
+  transition(f, 'transitionend'); await settle();
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+});
+
+test("sidebar motion and pane dragging own their placeholder lifetimes independently", async t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  transition(f, 'transitionrun');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 3);
+  f.down(); f.ghost(); await settle();
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3, 'no duplicate placeholders');
+  transition(f, 'transitionend'); await settle();
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3, 'drag continues after sidebar motion');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 0);
+  f.dom.window.dispatchEvent(new f.dom.window.Event('pointerup'));
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+});
+
+test("unrelated transitions and reduced motion never start sidebar placeholders", t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  transition(f, 'transitionrun', 'header', 'opacity');
+  transition(f, 'transitionrun', '[data-sidebar="gap"]', 'color');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+  Object.defineProperty(f.dom.window, 'matchMedia', { value:() => ({ matches:true }) });
+  f.doc.querySelector<HTMLButtonElement>('#toggle')!.click();
+  transition(f, 'transitionrun');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+});
+
+test("sidebar placeholders recover if a transition end never arrives", t => {
+  const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+  t.mock.timers.enable({ apis:['setTimeout'] });
+  transition(f, 'transitionrun');
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 3);
+  t.mock.timers.tick(1500);
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+  assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 0);
+});
+
+for (const end of ['blur', 'dispose']) {
+  test(`sidebar placeholders release frozen content on ${end}`, t => {
+    const f = fixture(); t.after(() => { f.stop(); f.dom.window.close(); });
+    transition(f, 'transitionrun');
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 3);
+    if (end === 'dispose') f.stop();
+    else f.dom.window.dispatchEvent(new f.dom.window.Event('blur'));
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-pane-placeholder]').length, 0);
+    assert.equal(f.doc.querySelectorAll('[data-sidebar-motion-pane]').length, 0);
+  });
+}
 
 for (const end of ['pointerup', 'pointercancel', 'Escape', 'blur', 'ghost-removed', 'dispose']) {
   test(`pane placeholders restore original content on ${end}`, async t => {
