@@ -25,7 +25,7 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 - `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
 - `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
 
-데스크톱의 사이드바 열기·닫기와 페인 확장·복원은 즉시 전환한다. 네이티브 레이아웃 표면의 `width`·`flex-grow`·`flex-basis` 전환만 끄고 콘텐츠 내부 버튼의 효과는 유지한다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다. 드래그 플레이스홀더는 실제 페인 드래그에만 사용한다.
+데스크톱의 좌우 사이드바 열기·닫기는 BB의 기본 트랜지션을 유지한다. 개별 페인의 확장·복원은 즉시 반영하고, `prefers-reduced-motion`에서는 사이드바 전환도 끈다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다. 드래그 플레이스홀더는 실제 페인 드래그에만 사용한다.
 
 기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 두 복사본은 고치지 않는다. 데스크톱의 좁은 창을 phone으로 취급하지 않는다. 색은 현재 BB 테마 토큰만 쓴다. 스레드 목록의 행 테마와 다른 플러그인 설정은 건드리지 않는다.
 

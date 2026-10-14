@@ -18,28 +18,30 @@ export const WORKSPACE_CHROME_CSS = `
 [data-sidebar-workspaces] button:disabled { cursor:default; opacity:.3; }
 [data-sidebar-workspaces] [role=status] { font-size:12px; color:var(--destructive); padding:0 8px; }
 [data-sidebar-workspace-bar] { flex-shrink:0; padding:0 8px; display:flex; align-items:center; }
-/* 레이아웃 폭을 보간하면 모든 페인의 줄바꿈·스크롤 크기를 매 프레임 다시 계산한다. */
-:root:not([data-bb-sidebar-phone]) :is([data-sidebar="gap"], [data-sidebar="panel"], [data-sidebar="collapsible-body"], [data-sidebar="inset"], [data-split-pane-id], [data-split-resize-grid-root] > [data-panel], [data-split-resize-grid-root] > [data-panel-resize-handle-id]) { transition:none !important; }
-:root:not([data-bb-sidebar-phone]) [data-split-resize-grid-root] { --panel-collapse-duration:0ms !important; }
+/* 사이드바는 네이티브 전환을 유지하고, 개별 페인의 확장은 즉시 반영한다. */
+:root:not([data-bb-sidebar-phone]) [data-split-pane-id] { transition:none !important; }
 :root:not([data-bb-sidebar-phone]) [data-testid="app-layout-root"][data-framed] { --bb-window-frame-lip:0px; }
 :root:not([data-bb-sidebar-phone]) [data-app-content-shell] { padding:0 4px 4px 0; }
-/* 최외곽만 넓혀 중첩된 가로·세로 페인 사이의 4px 여백은 유지한다. */
-:root:not([data-bb-sidebar-phone]) [data-app-content-shell] > main:has([data-split-pane-id]) { margin-top:-4px; }
+/* 접힌 사이드바 옆 최외곽만 넓혀 중첩된 페인 사이의 여백은 유지한다. */
 :root:not([data-bb-sidebar-phone]) [data-collapsible="rail"] ~ [data-sidebar="inset"] [data-app-content-shell] > main:has([data-split-pane-id]) { margin-left:-4px; }
 :root:not([data-bb-sidebar-phone]) :is([data-sidebar="inset"], [data-app-content-shell]) { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="inset"] { border-block-width:0; border-inline-end-width:0; }
 :root:not([data-bb-sidebar-phone]) [data-collapsible="rail"] ~ [data-sidebar="inset"] { border-inline-start-width:0; }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:0 4px 8px 0; border-radius:18px; overflow:clip; border-color:transparent; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:4px 4px 8px 0; border-radius:18px; overflow:clip; border-color:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] > div { max-width:100%; }
 /* 웹의 탭바가 content shell 안에 있을 때만 왼쪽 표면도 그 높이만큼 내린다. */
-:root:not([data-bb-sidebar-phone]):has([data-app-content-shell] > [data-sidebar-workspace-bar]) [data-sidebar="collapsible-body"] { margin-top:36px; }
+:root:not([data-bb-sidebar-phone]):has([data-app-content-shell] > [data-sidebar-workspace-bar]) [data-sidebar="collapsible-body"] { margin-top:calc(36px + 4px); }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::before { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
 /* 여백 없는 창 가장자리에서도 선이 잘리거나 내부 배경에 가려지지 않게 한다. */
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { content:""; position:absolute; inset:4px; z-index:1; pointer-events:none; border-radius:18px; box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), 0 0 8px color-mix(in oklab, var(--ring) 20%, transparent); opacity:0; transition:opacity 220ms cubic-bezier(.22,1,.36,1); }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id][data-focused="true"]::after { opacity:1; }
-@media (prefers-reduced-motion: reduce) { :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { transition:none; } }
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-bb-sidebar-phone]) :is([data-sidebar="gap"], [data-sidebar="panel"], [data-sidebar="collapsible-body"], [data-sidebar="inset"], [data-split-resize-grid-root] > [data-panel], [data-split-resize-grid-root] > [data-panel-resize-handle-id]) { transition:none !important; }
+  :root:not([data-bb-sidebar-phone]) [data-split-resize-grid-root] { --panel-collapse-duration:0ms !important; }
+  :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::after { transition:none; }
+}
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] [data-pane-header-focus-tab] { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim]) { border-radius:18px; overflow:clip; background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > [data-pane-focus-scrim] { inset:4px; border-radius:18px; }

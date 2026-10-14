@@ -61,7 +61,7 @@
 
 **drag placeholder:** 현재 `visibility: hidden`을 내용과 하위 element에 적용하고 아이콘·제목만 덧붙인다. 본문 DOM은 유지하지만 React·timer·subscription은 그대로다. observer는 실제 pane drag가 시작될 때 body의 직접 자식만 관찰하므로, streaming 전체 subtree observer가 현재 비용 원인은 아니다. 더 강한 render 생략을 실험한다면 pane 전체가 아니라 내용 wrapper에 한정하고 native ghost·drop target·placeholder는 남겨야 한다. [pane-drag.ts](../lib/pane-drag.ts)
 
-**이미 제거한 작업:** desktop에서 phone용 720ms geometry 추적을 돌리지 않으며 width/flex 확장 transition도 끈 상태다. 이것을 남은 비용으로 다시 계산하지 않는다. active ring의 220ms opacity 변화는 다른 종류이며, 현재 병목 근거 없이 제거할 이유가 없다. [sidebar-depth.ts](../lib/sidebar-depth.ts), [workspace-chrome.ts](../lib/workspace-chrome.ts)
+**이미 제거한 작업:** desktop에서 phone용 720ms geometry 추적을 돌리지 않는다. 후속 사용자 요청으로 사이드바의 네이티브 width/flex transition은 복원했으므로, 이 비용은 실제 화면에서 다시 측정해야 한다. 개별 페인의 확장은 즉시 반영한다. active ring의 220ms opacity 변화는 다른 종류이며, 현재 병목 근거 없이 제거할 이유가 없다. [sidebar-depth.ts](../lib/sidebar-depth.ts), [workspace-chrome.ts](../lib/workspace-chrome.ts)
 
 ### 직렬화만 분리한 작은 실험
 
