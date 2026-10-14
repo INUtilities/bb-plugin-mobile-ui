@@ -1,55 +1,31 @@
 ---
 name: sidebar
-description: BB의 상단 워크스페이스 탭, 페인 열기 방식, 사이드바·페인 간 여백과 모서리 및 기존 phone 드로어 모션을 변경한다.
+description: BB의 좌우 사이드바·메인 영역 카드와 사이드바 모션, 기존 phone 드로어·햅틱을 변경한다.
 ---
 
-# Sidebar와 워크스페이스
+# Sidebar
 
-plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --json`으로 확인한다. 프로토타입 요청과 실제 플러그인 변경 요청을 구분한다.
+plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --json`으로 확인한다.
 
-## 제품 계약
+## 제품 계약과 경계
 
-- 상단 탭 하나가 여러 네이티브 BB 페인과 그 배치를 소유한다.
-- 기본 탭 하나로 시작하고 마지막 탭은 닫을 수 없다.
-- 화면은 기존 왼쪽 리본 메뉴와 스레드 목록에서 연다. 오른쪽에 새 도구 목록을 만들지 않는다.
-- `openMode`는 `new-pane`(기본) 또는 `replace`다. 설정 UI에서는 「새 페인에 열기」와 「현재 활성 페인의 화면 교체」로 표시한다.
-- `desktopLayout` 설정은 제거했다. 오래된 카드 토글·이벤트·저장값을 다시 읽지 않는다.
-- 워크스페이스 제목·페인 개수·좌우/상하 분할 버튼으로 된 별도 툴바는 만들지 않는다.
+- `app.tsx`: content script와 기기 브리지를 등록한다.
+- `lib/sidebar-cards.ts`: desktop 외곽 카드·좌우 사이드바 표면·메인 페인 여백과 모서리. 네이티브 분할·리사이즈는 유지한다.
+- `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 위치 추적·입력 이벤트 감시는 phone에서만 실행한다.
+- `lib/sidebar-chrome.ts`: 기기 상태와 phone gate를 전달한다.
+- 저장된 배치 탭·활성 페인 강조·드래그 및 사이드바 전환 플레이스홀더는 별도 `multipanes` 플러그인 소유다.
+- Sidebar는 페인 내비게이션, 탭 상태, 세션 이전, `openMode` 설정을 소유하지 않는다. 오래된 `openMode`·`desktopLayout` 저장값은 읽지 않는다.
 
-## 코드 경계
+왼쪽은 kit의 `EASE.exit`, 오른쪽은 `EASE.out`으로 320ms 네이티브 width/flex 전환을 쓴다. 왼쪽 본문의 visibility 지연도 320ms다. 본문·푸터는 고정 위치 `left:0; right:auto`와 panel에서 상속한 `--sidebar-slide-width`를 쓴다. 전환 중 `max-width:100%`로 내용 폭을 줄이지 않는다. 본문과 푸터의 카드 통합은 별도 후속 작업이다.
 
-- `lib/workspaces.ts`: 워크스페이스 상태, 저장값 검증, 네이티브 페인 트리의 검증.
-- `lib/workspace-chrome.ts`: 상단 탭, 네이티브 세션 저장소 연결, 네이티브 modifier-click 내비게이션과 여백 CSS.
-- `lib/pane-drag.ts`: 네이티브 페인 제목 드래그와 좌우 사이드바 전환 중 플레이스홀더. 스레드는 프로바이더 아이콘과 최대 두 줄의 제목, 플러그인은 기존 헤더 아이콘을 표시한다. `app.tsx`가 SDK의 `useComposers`와 `experimental_ProviderIcon`으로 미리 렌더한 아이콘을 복사하며 서버 요청은 하지 않는다. 콘텐츠 DOM을 떼지 않고 가리며, 드래그와 사이드바 전환의 수명은 따로 관리한다. 사이드바 행 드래그와 제목 단순 클릭에는 적용하지 않는다.
-- `app.tsx`: 콘텐츠 스크립트와 기기·설정 브리지 등록.
-- `server.ts`: `openMode` 설정과 `workspace-preferences` realtime 채널.
-- `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 데스크톱의 이전 카드 CSS 분기는 런타임에서 끈다.
-- `lib/motion.ts`: kit에서 그대로 복사한 공용 모션. 복사본은 고치지 않는다.
+Multipanes의 탭 높이는 `--bb-multipanes-frame-offset`, `--bb-multipanes-web-offset` CSS 변수로 받는다. 해당 플러그인이 꺼지면 기본값 0으로 돌아간다. Sidebar는 Multipanes DOM·이벤트를 만들거나 제거하지 않는다. 카드의 배경 규칙에서는 Multipanes placeholder와 native focus scrim을 제외한다.
 
-데스크톱의 좌우 사이드바 열기·닫기는 네이티브 width/flex 속성과 320ms를 유지한다. 왼쪽은 kit의 `EASE.exit`(`cubic-bezier(.4,0,.2,1)`), 오른쪽은 `EASE.out`을 쓴다. 왼쪽 본문의 닫힘 visibility 지연도 320ms로 맞춘다. 사이드바 전환에만 본문 wrapper의 `content-visibility:hidden`과 시작 시 한 번 측정한 intrinsic size를 사용해 렌더링을 생략한다. 매 프레임 본문을 측정하지 않는다.
+우측 `aside`에는 `filter`, `transform`, `left`/`right`, `backdrop-filter`를 추가하지 않는다. Browser native view와 Terminal WebGL의 제약을 유지한다. `[data-split-pane-id] > div` 전체에 배경을 칠하지 않는다. focus scrim과 내부 카드·입력·선택 색을 유지한다.
 
-네이티브 transition 이벤트로 시작·종료를 감지한다. 플레이스홀더는 120ms로 나타나며, 전환 종료 시 본문을 바로 복원한 뒤 덮개만 120ms로 사라진다. 덮개 배경은 페인 본문의 투명 배경 규칙에서 제외한다. fade 도중 재토글하면 같은 덮개를 재사용하고 이전 정리 타이머를 취소한다. 드래그 수명과 분리하며, 종료 이벤트 누락·blur·dispose에서는 fade를 기다리지 않고 복원한다. 개별 페인의 확장·복원은 즉시 반영하고, `prefers-reduced-motion`에서는 사이드바 전환과 해당 플레이스홀더를 생략한다. `injectSidebarDepth`의 CSS·위치 추적·입력 이벤트 감시는 phone에서만 실행한다. desktop에서 `pointermove`·`wheel`마다 720ms 동안 모든 페인 크기를 읽는 루프를 다시 켜지 않는다.
-
-탭바 위에는 4px의 추가 여백을 둔다. native title bar의 높이는 유지하고 framed shell의 시작 위치는 행 높이 + 2px로 둔다. 웹에서는 탭바 아래 margin을 -2px로 두고 왼쪽 표면도 2px 올린다. 행 안에서 탭은 2px, native title bar의 history·좌우 토글 버튼은 8px 위로 정렬한다. 탭과 버튼의 위치를 유지한 채 아래 표면까지의 바깥 간격만 2px로 줄인다.
-
-왼쪽 사이드바 본문은 panel의 `--sidebar-width`에서 리본과 4px 여백을 뺀 고정 폭을 유지한다. `--sidebar-width`는 하위에서 초기값으로 돌아가므로 panel에서 계산한 값을 `--sidebar-slide-width`로 상속한다. 본문은 absolute, 푸터는 relative wrapper인 차이가 있어 둘 다 `left:0; right:auto`에 둔다. 리본·본문·푸터는 제자리에 있고 바깥 clip과 화면이 움직인다. 본문에 `max-width:100%`를 적용하면 전환 중 내용이 찌그러진다. 오른쪽은 BB의 기존 고정 폭 슬라이드를 유지한다. 이 구조만으로 CPU 감소를 보장하지 않는다.
-
-기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 두 복사본은 고치지 않는다. 데스크톱의 좁은 창을 phone으로 취급하지 않는다. 색은 현재 BB 테마 토큰만 쓴다. 스레드 목록의 행 테마와 다른 플러그인 설정은 건드리지 않는다.
-
-## 네이티브 복원 제약
-
-페인 추가·교체에는 재로드를 쓰지 않는다. 새 페인 모드의 기본 클릭은 BB의 `⌘/Ctrl+클릭` 분할 동작에 전달하고, 교체 모드는 원래 내비게이션을 유지한다. 명시적인 modifier-click은 가로채지 않는다. 페인 추가를 위해 `history`를 감싸거나 `bb.splitLayout`에 쓰지 않는다. 최대 8개에서는 일반 클릭으로 기존 콘텐츠를 교체하지 않고 안내한다.
-
-BB의 첫 1→2 분할은 단일 페인 렌더에서 분할 트리 렌더로 바뀌며 채팅을 다시 마운트한다. 문서 재로드 제거와 네이티브 컴포넌트 마운트 유지를 구분해서 보고한다.
-
-SDK 0.6.42의 `useSidebarSplitLayout()`은 읽기 전용이며 전체 배치 복원 API는 없다. route·layout 전체(focus 포함)·maximize가 모두 같으면 탭 선택과 저장만 갱신하고 native 저장값 쓰기와 navigation을 생략한다. 하나라도 다르면 `bb.splitLayout` version 1과 `bb.splitLayout.maximizedPaneId`의 네이티브 세션 값을 저장하고 앱 화면 재초기화로 복원한다. 500ms checkpoint는 raw 입력과 activeId가 같으면 snapshot을 재사용하고 clone·직렬화를 생략한다. 저장 실패는 같은 직렬화 결과로 다음 checkpoint에 재시도한다. 네이티브 저장 형식을 바꿀 때는 현재 BB SDK와 소스를 먼저 읽는다. BB 앱 소스·설치 파일을 직접 고치지 않는다.
-
-탭 목록은 현재 창의 `sessionStorage`에만 둔다. 앱 재로드에서는 유지하고 새 세션에서는 기본 탭부터 시작한다. 플러그인 내부 메모리 상태나 Browser·Terminal 네이티브 뷰의 연속 마운트를 보장한다고 보고하지 않는다.
-
-우측 `aside`에는 `filter`, `transform`, `left`/`right`, `backdrop-filter`를 추가하지 않는다. Browser 네이티브 뷰와 Terminal WebGL을 깨뜨릴 수 있다. 리사이즈 히트 영역은 유지한다. 네이티브 페인 최대 개수는 8이다.
+기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 좁은 desktop 창은 phone이 아니다. `lib/motion.ts` 복사본은 수정하지 않는다. 색은 BB 테마 토큰을 쓴다.
 
 ## 확인과 적용
 
-`npm test`, `npm run typecheck`, `bb plugin build .`를 실행한다. 요청이 실제 화면 확인을 포함하면 검증된 변경을 설치 소스에 합치고 `bb plugin reload sidebar`로 적용한다. 설치 경로와 실행 번들 해시를 확인한다.
+`npm test`, `npm run typecheck`, `bb plugin build .`를 실행한다. 실제 적용 요청에서는 `bb plugin reload sidebar` 후 설치 경로·실행 번들 해시를 확인한다.
 
-워크스페이스 전환·복원, 왼쪽 리본 페이지 열기, 스레드 목록 열기, 새 페인/활성 페인 교체, 마지막 탭 보호를 실제 앱에서 확인한다. native title bar와 웹의 content shell 두 위치가 모두 중요하다. phone 캡처가 없으면 없다고 명시한다. 화면 완료는 사용자가 판정한다.
+Sidebar만, Multipanes와 함께, 비활성화·재활성화 상태의 카드·클릭·정리를 확인한다. phone native haptics와 native Browser·Terminal은 별도 검증 대상이다. 검증 커밋, 실행 번들, desktop·phone 캡처, 미확인을 보고하며 화면 완료는 사용자가 판단한다.

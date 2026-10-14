@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-sidebar",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "engines": {
     "bb": ">=0.44",
@@ -8,7 +8,7 @@
   },
   "bb": {
     "name": "Sidebar",
-    "description": "워크스페이스 탭으로 열린 페인과 배치를 기억하고 사이드바·화면 사이를 여백과 둥근 모서리로 구분합니다.",
+    "description": "좌우 사이드바·메인 화면의 카드 레이아웃과 사이드바 모션, 폰 햅틱을 제공합니다.",
     "branding": {
       "icon": "PanelLeft"
     },

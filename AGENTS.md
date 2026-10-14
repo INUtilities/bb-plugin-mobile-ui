@@ -52,4 +52,5 @@
 
 - plugin id: `sidebar`
 - 확인 명령: `npm test`, `npm run typecheck`
-- 이 플러그인의 제품 규칙은 이 절에 쓴다.
+- 제품 계약은 `skills/sidebar/SKILL.md`를 따른다.
+- 카드·사이드바·phone 동작만 소유한다. 저장 배치·강조·플레이스홀더는 Multipanes 소유다.
