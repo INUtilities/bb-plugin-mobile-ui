@@ -16,7 +16,9 @@ plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --j
 - 저장된 배치 탭·활성 페인 강조·드래그 및 사이드바 전환 플레이스홀더는 별도 `multipanes` 플러그인 소유다.
 - Sidebar는 페인 내비게이션, 탭 상태, 세션 이전, `openMode` 설정을 소유하지 않는다. 오래된 `openMode`·`desktopLayout` 저장값은 읽지 않는다.
 
-왼쪽은 kit의 `EASE.exit`, 오른쪽은 `EASE.out`으로 320ms 네이티브 width/flex 전환을 쓴다. 왼쪽 본문의 visibility 지연도 320ms다. 본문·푸터는 고정 위치 `left:0; right:auto`와 panel에서 상속한 `--sidebar-slide-width`를 쓴다. 전환 중 `max-width:100%`로 내용 폭을 줄이지 않는다. 본문과 푸터의 카드 통합은 별도 후속 작업이다.
+왼쪽은 kit의 `EASE.exit`, 오른쪽은 `EASE.out`으로 320ms 네이티브 width/flex 전환을 쓴다. 왼쪽 본문의 visibility 지연도 320ms다. 본문·푸터는 고정 위치 `left:0; right:auto`와 panel에서 상속한 `--sidebar-slide-width`를 쓴다. 전환 중 `max-width:100%`로 내용 폭을 줄이지 않는다.
+
+왼쪽 목록·푸터는 같은 `--sidebar` 표면으로 맞닿으며 목록 위와 푸터 아래의 바깥 모서리만 18px로 둔다. native DOM·스크롤 컨테이너를 옮기지 않는다. 목록의 아래 margin은 푸터의 위 margin을 상쇄하여 중간 여백을 없앤다. 푸터 행 높이·리본 버튼·메인 간격은 유지한다. Multipanes가 꺼져 offset이 0이 되어도 두 표면은 이어져야 한다.
 
 Multipanes의 탭 높이는 `--bb-multipanes-frame-offset`, `--bb-multipanes-web-offset` CSS 변수로 받는다. 해당 플러그인이 꺼지면 기본값 0으로 돌아간다. Sidebar는 Multipanes DOM·이벤트를 만들거나 제거하지 않는다. 카드의 배경 규칙에서는 Multipanes placeholder와 native focus scrim을 제외한다.
 

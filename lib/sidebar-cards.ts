@@ -17,7 +17,10 @@ export const SIDEBAR_CARDS_CSS = `
 :root:not([data-bb-sidebar-phone]) :is([data-sidebar="inset"], [data-app-content-shell]) { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="inset"] { border-block-width:0; border-inline-end-width:0; }
 :root:not([data-bb-sidebar-phone]) [data-collapsible="rail"] ~ [data-sidebar="inset"] { border-inline-start-width:0; }
-:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:calc(4px + var(--bb-multipanes-web-offset, 0px)) 4px 8px 0; border-radius:18px; overflow:clip; border-color:transparent; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] { margin:calc(4px + var(--bb-multipanes-web-offset, 0px)) 4px 8px 0; overflow:clip; border-color:transparent; background:var(--sidebar); }
+/* 목록을 푸터의 상단 여백까지 이어 붙인다. native 푸터 행과 리본 버튼 위치는 유지한다. */
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"]:not(:has([data-sidebar="footer"])) { margin-bottom:calc(-4px - var(--bb-multipanes-web-offset, 0px)); border-radius:18px 18px 0 0; }
+:root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"]:has([data-sidebar="footer"]) { border-radius:0 0 18px 18px; }
 /* 본문·푸터는 같은 고정 위치에 두고 바깥 clip과 화면만 전환한다. */
 :root:not([data-bb-sidebar-phone]) [data-sidebar="panel"] { --sidebar-slide-width:calc(var(--sidebar-width) - var(--sidebar-rail-width, 0px) - 4px); }
 :root:not([data-bb-sidebar-phone]) [data-sidebar="collapsible-body"] > div { left:0; right:auto; width:var(--sidebar-slide-width) !important; max-width:none; }
