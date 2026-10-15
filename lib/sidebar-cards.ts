@@ -27,9 +27,13 @@ export const SIDEBAR_CARDS_CSS = `
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] { padding:4px; isolation:isolate; border-color:transparent !important; background:transparent !important; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]:not([data-focused]) { position:relative; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id]::before { content:""; position:absolute; inset:4px; z-index:-1; pointer-events:none; border-radius:18px; background:var(--sidebar); }
+/* Multipanes가 없을 때만 같은 native 포커스 상태와 단일 pseudo를 쓴다. */
+:root:not([data-bb-sidebar-phone]):not([data-bb-multipanes]) [data-split-pane-id]::after { content:""; position:absolute; inset:4px; z-index:1; pointer-events:none; border-radius:18px; box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--ring) 55%, transparent), 0 0 8px color-mix(in oklab, var(--ring) 20%, transparent); opacity:0; transition:opacity 220ms ${EASE.out}; }
+:root:not([data-bb-sidebar-phone]):not([data-bb-multipanes]) [data-split-pane-id][data-focused="true"]::after { opacity:1; }
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-bb-sidebar-phone]) :is([data-sidebar="gap"], [data-sidebar="panel"], [data-sidebar="collapsible-body"], [data-sidebar="inset"], [data-split-resize-grid-root] > [data-panel], [data-split-resize-grid-root] > [data-panel-resize-handle-id]) { transition:none !important; }
   :root:not([data-bb-sidebar-phone]) [data-split-resize-grid-root][data-panel-group] { --panel-collapse-duration:0ms !important; }
+  :root:not([data-bb-sidebar-phone]):not([data-bb-multipanes]) [data-split-pane-id]::after { transition:none; }
 }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] [data-pane-header-focus-tab] { background:transparent; }
 :root:not([data-bb-sidebar-phone]) [data-split-pane-id] > :is(div, section):not([data-pane-focus-scrim], [data-multipanes-pane-placeholder]) { border-radius:18px; overflow:clip; background:transparent; }
