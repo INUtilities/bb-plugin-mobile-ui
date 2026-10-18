@@ -1,35 +1,32 @@
 ---
 name: sidebar
-description: BB의 좌우 사이드바·메인 영역 카드와 사이드바 모션, 기존 phone 드로어·햅틱을 변경한다.
+description: Mobile UI의 폰 패널 모션·화면 효과·햅틱을 변경하거나 기존 Sidebar 설치를 점검할 때 사용한다.
 ---
 
-# Sidebar
+# Mobile UI
 
-plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --json`으로 확인한다.
+표시 이름은 `Mobile UI`, 기존 설치 plugin id는 `sidebar`다. 실제 설치 소스는 `bb plugin source sidebar --json`으로 확인한다.
 
 ## 제품 계약과 경계
 
-- `app.tsx`: content script와 기기 브리지를 등록한다.
-- `lib/sidebar-cards.ts`: desktop 외곽 카드·좌우 사이드바 표면·메인 페인 여백과 모서리, Multipanes가 없을 때의 활성 페인 강조. 네이티브 분할·리사이즈는 유지한다.
-- `lib/sidebar-depth.ts`: 기존 phone 드로어·shelf 모션과 패널 탭 햅틱. 위치 추적·입력 이벤트 감시는 phone에서만 실행한다.
-- `lib/sidebar-chrome.ts`: 기기 상태와 phone gate를 전달한다.
-- 저장된 배치 탭·드래그 및 사이드바 전환 플레이스홀더는 별도 `multipanes` 플러그인 소유다.
-- Sidebar는 페인 내비게이션, 탭 상태, 세션 이전, `openMode` 설정을 소유하지 않는다. 오래된 `openMode`·`desktopLayout` 저장값은 읽지 않는다.
+- `app.tsx`는 content script와 기기 브리지를 등록한다. desktop 카드 모듈이나 전역 테마를 등록하지 않는다.
+- `lib/sidebar-depth.ts`는 phone 드로어·shelf 위치에 따른 화면 효과와 패널 조작 햅틱을 소유한다. 위치 추적·입력 이벤트 감시는 phone에서만 실행한다.
+- `lib/sidebar-chrome.ts`는 기기 상태와 phone gate를 전달한다. narrow phone과 넓은 가로 화면의 기존 구분을 유지한다.
+- 패널·탭 전환은 BB가 담당한다. 탭 스와이프 감지는 햅틱을 요청할 뿐 내비게이션을 대신하지 않는다.
+- 저장된 배치·플레이스홀더와 활성 페인 강조는 이 플러그인의 범위 밖이다.
 
-왼쪽은 kit의 `EASE.exit`, 오른쪽은 `EASE.out`으로 320ms 네이티브 width/flex 전환을 쓴다. 왼쪽 본문의 visibility 지연도 320ms다. 본문·푸터는 고정 위치 `left:0; right:auto`와 panel에서 상속한 `--sidebar-slide-width`를 쓴다. 전환 중 `max-width:100%`로 내용 폭을 줄이지 않는다.
+## 주의점
 
-왼쪽 목록·푸터는 같은 `--sidebar` 표면으로 맞닿으며 목록 위와 푸터 아래의 바깥 모서리만 18px로 둔다. native DOM·스크롤 컨테이너를 옮기지 않는다. 목록의 아래 margin은 푸터의 위 margin을 상쇄하여 중간 여백을 없앤다. 푸터 행 높이·리본 버튼·메인 간격은 유지한다. Multipanes가 꺼져 offset이 0이 되어도 두 표면은 이어져야 한다.
-
-Multipanes의 탭 높이는 `--bb-multipanes-frame-offset`, `--bb-multipanes-web-offset` CSS 변수로 받는다. 해당 플러그인이 꺼지면 기본값 0으로 돌아간다. Sidebar는 Multipanes DOM·이벤트를 만들거나 제거하지 않는다. 카드의 배경 규칙에서는 Multipanes placeholder와 native focus scrim을 제외한다.
-
-desktop 분할 페인의 강조는 native `data-focused="true"`를 CSS로 읽는다. Sidebar 단독에서는 기존 카드의 `::after` 하나로 표시하며, root의 `data-bb-multipanes`가 있으면 Multipanes의 강조에 맡긴다. 포커스용 DOM·observer·listener를 추가하지 않는다. phone에는 적용하지 않으며 동작 줄이기에서는 opacity 전환을 끈다.
-
-우측 `aside`에는 `filter`, `transform`, `left`/`right`, `backdrop-filter`를 추가하지 않는다. Browser native view와 Terminal WebGL의 제약을 유지한다. `[data-split-pane-id] > div` 전체에 배경을 칠하지 않는다. focus scrim과 내부 카드·입력·선택 색을 유지한다.
-
-기기 판정은 kit에서 그대로 복사한 `lib/device.ts`, `lib/use-device.ts`만 사용한다. 좁은 desktop 창은 phone이 아니다. `lib/motion.ts` 복사본은 수정하지 않는다. 색은 BB 테마 토큰을 쓴다.
+- GitHub 저장소 이름과 표시 이름을 바꿔도 기존 plugin id는 유지한다. `package.json`의 package name이 기존 설치 식별자와 연결되므로 `bb-plugin-sidebar`를 유지한다.
+- 좁은 desktop 창은 phone이 아니다. kit에서 복사한 `lib/device.ts`, `lib/use-device.ts`는 원본을 따른다.
+- native bridge의 `capabilities`에 `haptic`이 있을 때만 햅틱을 요청한다. 연타·취소·두 번째 손가락을 기존 동작과 구분한다.
+- Browser native view와 Terminal WebGL을 보호하기 위해 오른쪽 패널이 열린 뒤에는 resting filter·transform을 유지하지 않는다.
+- `openMode`·`desktopLayout` 등 예전 설정은 읽지 않는다.
 
 ## 확인과 적용
 
-`npm test`, `npm run typecheck`, `bb plugin build .`를 실행한다. 실제 적용 요청에서는 `bb plugin reload sidebar` 후 설치 경로·실행 번들 해시를 확인한다.
+`npm test`, `npm run typecheck`, `bb plugin build .`를 실행한다. 변경 전 모바일 효과와 phone 가로·세로 화면을 비교하고 desktop·tablet의 스타일·위치 추적이 비활성인지 확인한다.
 
-Sidebar만, Multipanes와 함께, 비활성화·재활성화 상태의 카드·클릭·정리를 확인한다. phone native haptics와 native Browser·Terminal은 별도 검증 대상이다. 검증 커밋, 실행 번들, desktop·phone 캡처, 미확인을 보고하며 화면 완료는 사용자가 판단한다.
+실제 적용 요청에서는 `bb plugin reload sidebar` 후 설치 경로와 실행 번들 해시를 확인한다. 비활성 플러그인을 임의로 켜지 않는다. phone native haptics와 native Browser·Terminal은 별도 검증 대상이다.
+
+검증 커밋, 실행 번들, desktop·phone 캡처, 미확인을 보고하며 화면 완료는 사용자가 판단한다.

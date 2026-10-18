@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { usesDesktopCard, usesPhoneShelf, writeSidebarChrome, clearSidebarChrome, readSidebarChrome } from "./sidebar-chrome.ts";
+import { usesPhoneShelf, writeSidebarChrome, clearSidebarChrome, readSidebarChrome } from "./sidebar-chrome.ts";
 
 it("separates phone and desktop at the same narrow viewport without changing phone orientations", () => {
   for (const orientation of ["portrait", "landscape"] as const) {
@@ -8,19 +8,12 @@ it("separates phone and desktop at the same narrow viewport without changing pho
     const desktop = { ...phone, device: "desktop" } as const;
     assert.equal(usesPhoneShelf(phone), true);
     assert.equal(usesPhoneShelf(desktop), false);
-    assert.equal(usesDesktopCard(phone), false);
-    assert.equal(usesDesktopCard(desktop), false);
   }
 });
 
-it("preserves a wide phone landscape and keeps desktop cards independent of hit target size", () => {
+it("preserves a wide phone landscape without treating tablets as phones", () => {
   const phone = { device: "phone", orientation: "landscape", viewport: "medium", hitTarget: "large" } as const;
   assert.equal(usesPhoneShelf(phone), false);
-  assert.equal(usesDesktopCard(phone), false);
-  for (const hitTarget of ["small", "large"] as const) {
-    assert.equal(usesDesktopCard({ ...phone, device: "desktop", hitTarget }), true);
-  }
-  assert.equal(usesDesktopCard({ ...phone, device: "tablet" }), false);
   assert.equal(usesPhoneShelf({ ...phone, device: "tablet", viewport: "narrow" }), false);
 });
 

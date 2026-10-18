@@ -9,7 +9,6 @@ import {
   isSidebarMotionTarget,
   injectSidebarDepth,
   sidebarDepthCss,
-  setDesktopCardLayout,
   mobileShelfProgress,
   nextSidebarPhase,
   blurComposerCaret,
@@ -25,7 +24,6 @@ import {
   readSidebarDepth,
   readTranslateX,
   keepWatchingSlide,
-  tracksSlideGeometry,
   rightPanelDepthProgress,
   rightShelfProgress,
   sidebarDepthProgress,
@@ -39,35 +37,6 @@ describe("keepWatchingSlide", () => {
     assert.equal(keepWatchingSlide(160), true);
     assert.equal(keepWatchingSlide(719), true);
     assert.equal(keepWatchingSlide(720), false);
-  });
-});
-
-describe("tracksSlideGeometry", () => {
-  it("leaves the desktop card to CSS and keeps sampling the drawer and the shelf", () => {
-    assert.equal(tracksSlideGeometry({ getAttribute: () => null, matches: () => false }), false);
-    assert.equal(
-      tracksSlideGeometry({
-        getAttribute: (name: string) => (name === "data-vaul-drawer-direction" ? "left" : null),
-        matches: () => false,
-      }, PHONE_CHROME),
-      true,
-    );
-    assert.equal(
-      tracksSlideGeometry({
-        getAttribute: () => null,
-        matches: (selector: string) => selector === '[data-testid="secondary-panel-shelf"]',
-      }, PHONE_CHROME),
-      true,
-    );
-  });
-
-  it("follows desktop geometry again when the card layout is off", () => {
-    setDesktopCardLayout(false);
-    try {
-      assert.equal(tracksSlideGeometry({ getAttribute: () => null, matches: () => false }), true);
-    } finally {
-      setDesktopCardLayout(true);
-    }
   });
 });
 
@@ -182,154 +151,13 @@ describe("readRightDepth", () => {
       querySelectorAll: (selector: string) =>
         selector === "[data-panel] > aside" ? [aside] : [],
     };
+    writeSidebarChrome(doc as unknown as Document, PHONE_CHROME);
     assert.equal(syncSidebarDepth(doc as unknown as Document), 1);
     assert.equal(aside.dataset.bbMotionPin, "");
     assert.equal(readRightDepth(aside as unknown as HTMLElement), 0.5);
     assert.equal(aside.style.props.get("--bb-motion-right-depth"), "0.5");
   });
 
-  it("remembers the open panel width and keeps it while the panel is hidden", () => {
-    const parent = {
-      getBoundingClientRect: () => ({ width: 280.4 }),
-      style: {
-        props: new Map<string, string>(),
-        setProperty(name: string, value: string) {
-          this.props.set(name, value);
-        },
-      },
-    };
-    const aside = {
-      dataset: {} as Record<string, string | undefined>,
-      style: {
-        width: "40cqw",
-        props: new Map<string, string>(),
-        setProperty(name: string, value: string) {
-          this.props.set(name, value);
-        },
-      },
-      parentElement: parent,
-      getBoundingClientRect: () => ({ left: 100, right: 380, width: 280 }),
-      getAttribute: (name: string) => (name === "aria-hidden" ? hidden : null),
-    };
-    let hidden: string | null = null;
-    const doc = {
-      defaultView: null,
-      querySelectorAll: (selector: string) =>
-        selector === "[data-panel] > aside" ? [aside] : [],
-    };
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.style.props.get("--bb-motion-right-card-width"), "280px");
-    hidden = "true";
-    parent.getBoundingClientRect = () => ({ width: 0 });
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.style.props.get("--bb-motion-right-card-width"), "280px");
-  });
-
-  it("slides the right panel only after aria-hidden changes, and ignores a stale timer", () => {
-    const timers: Array<() => void> = [];
-    const parent = {
-      dataset: {} as Record<string, string | undefined>,
-      getBoundingClientRect: () => ({ left: 800, right: 1080, width: 280, top: 0, bottom: 800 }),
-      style: {
-        props: new Map<string, string>(),
-        setProperty(name: string, value: string) {
-          this.props.set(name, value);
-        },
-      },
-    };
-    let hidden: string | null = null;
-    const aside = {
-      dataset: {} as Record<string, string | undefined>,
-      style: {
-        width: "",
-        props: new Map<string, string>(),
-        setProperty(name: string, value: string) {
-          this.props.set(name, value);
-        },
-      },
-      parentElement: parent,
-      ownerDocument: {
-        defaultView: {
-          setTimeout(fn: () => void) {
-            timers.push(fn);
-            return timers.length;
-          },
-        },
-      },
-      getBoundingClientRect: () => ({ left: 800, right: 1080, width: 280 }),
-      getAttribute: (name: string) => (name === "aria-hidden" ? hidden : null),
-    };
-    const doc = {
-      defaultView: null,
-      querySelectorAll: (selector: string) =>
-        selector === "[data-panel] > aside" ? [aside] : [],
-    };
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.dataset.bbMotionRightPhase, undefined);
-    assert.equal(timers.length, 0);
-
-    hidden = "true";
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.dataset.bbMotionRightPhase, "leave");
-
-    hidden = null;
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.dataset.bbMotionRightPhase, "enter");
-
-    hidden = "true";
-    syncSidebarDepth(doc as unknown as Document);
-    assert.equal(parent.dataset.bbMotionRightPhase, "leave");
-    assert.equal(timers.length, 3);
-
-    timers[1]();
-    assert.equal(parent.dataset.bbMotionRightPhase, "leave");
-    timers[2]();
-    assert.equal(parent.dataset.bbMotionRightPhase, undefined);
-  });
-
-  it("drops the card slide when the card layout is off", () => {
-    setDesktopCardLayout(false);
-    try {
-      const parent = {
-        dataset: {
-          bbMotionRightWas: "open",
-          bbMotionRightPhase: "leave",
-        } as Record<string, string | undefined>,
-        getBoundingClientRect: () => ({ left: 800, right: 1080, width: 280, top: 0, bottom: 800 }),
-        style: {
-          props: new Map<string, string>([["--bb-motion-right-card-width", "280px"]]),
-          setProperty(name: string, value: string) {
-            this.props.set(name, value);
-          },
-          removeProperty(name: string) {
-            this.props.delete(name);
-          },
-        },
-      };
-      const aside = {
-        dataset: {} as Record<string, string | undefined>,
-        style: {
-          width: "",
-          setProperty() {},
-          removeProperty() {},
-        },
-        parentElement: parent,
-        getBoundingClientRect: () => ({ left: 800, right: 1080, width: 280 }),
-        getAttribute: () => null,
-      };
-      const doc = {
-        defaultView: null,
-        querySelectorAll: (selector: string) =>
-          selector === "[data-panel] > aside" ? [aside] : [],
-      };
-      syncSidebarDepth(doc as unknown as Document);
-      assert.equal(parent.dataset.bbMotionRightPhase, undefined);
-      assert.equal(parent.dataset.bbMotionRightWas, undefined);
-      assert.equal(parent.style.props.get("--bb-motion-right-card-width"), undefined);
-    } finally {
-      setDesktopCardLayout(true);
-    }
-  });
 });
 
 describe("readRightShelfDepth", () => {
@@ -468,7 +296,7 @@ function motionTarget(
 }
 
 describe("syncSidebarDepth", () => {
-  it("applies the current desktop rect to the panel", () => {
+  it("applies the current phone panel rect", () => {
     const panel = {
       dataset: {} as Record<string, string | undefined>,
       getAttribute: () => null,
@@ -485,38 +313,17 @@ describe("syncSidebarDepth", () => {
       querySelectorAll: (selector: string) =>
         selector === '[data-sidebar="panel"]' ? [panel] : [],
     };
+    writeSidebarChrome(doc as unknown as Document, PHONE_CHROME);
     assert.equal(syncSidebarDepth(doc as unknown as Document), 1);
     assert.equal(panel.style.props.get("--lite-sidebar-depth"), "0.75");
   });
 });
 
-function mediaBody(css: string, query: string): string {
-  const marker = query === "phone" ? "bb-sidebar-phone-shelf" : "bb-sidebar-desktop-card";
-  const startMarker = query.startsWith("(") ? 0 : css.indexOf(`/* ${marker} */`);
-  const header = query.startsWith("(") ? `@media ${query} {` : /@media (?:not )?all \{/.exec(css.slice(startMarker))?.[0] ?? "";
-  const start = css.indexOf(header, startMarker);
-  assert.notEqual(start, -1, header);
-  let depth = 0;
-  for (let i = css.indexOf("{", start); i < css.length; i++) {
-    if (css[i] === "{") depth += 1;
-    else if (css[i] === "}") {
-      depth -= 1;
-      if (depth === 0) return css.slice(start + header.length, i);
-    }
-  }
-  assert.fail(`unclosed ${header}`);
-  return "";
-}
-
-function assertSlideInFromHalfway(css: string): void {
+function assertPhoneStyles(css: string): void {
   assert.match(css, /brightness\(calc\(0\.7 \+ var\(--lite-sidebar-depth\) \* 0\.3\)\)/);
   assert.doesNotMatch(css, /brightness\(calc\(0\.7 \+ var\(--bb-motion-right-depth\) \* 0\.3\)\)/);
   assert.doesNotMatch(css, /perspective\(/);
-  const desktop = mediaBody(css, "desktop");
   assert.doesNotMatch(css, /scale\(/);
-  assert.match(desktop, /translateX\(0\)/);
-  assert.match(desktop, /translateX\(-100%\)/);
-  assert.match(desktop, /translateX\(100%\)/);
   assert.doesNotMatch(css, /opacity: calc\(0\.16/);
   assert.match(
     css,
@@ -559,121 +366,6 @@ function assertSlideInFromHalfway(css: string): void {
     css,
     /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all \{[^]*\[data-sidebar="inset"\]\[data-panel-shelf="shelf"\],\s*\[data-sidebar="inset"\]\[data-panel-shelf="full"\] \{\s*border-top-right-radius: 0;\s*border-bottom-right-radius: 0;\s*box-shadow: 67px 0 0 0 var\(--background\);/,
   );
-  assert.match(
-    desktop,
-    /\[data-side="left"\] > \[data-sidebar="panel"\] \{\s*top: 10px;\s*bottom: 10px;\s*left: 10px !important;\s*width: calc\(var\(--sidebar-width\) - 20px\);\s*height: auto;\s*border-radius: 20px;\s*corner-shape: squircle;\s*box-shadow: 0 12px 32px rgb\(0 0 0 \/ 0\.16\);\s*border-right-color: transparent;\s*overflow: clip;\s*filter: none;\s*transform: none;\s*opacity: 1;\s*z-index: 21;\s*transition:\s*transform 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*opacity 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*visibility 0s linear 0s !important;\s*\}/,
-  );
-  assert.doesNotMatch(desktop, /body\.sidebar-resizing/);
-  assert.match(
-    desktop,
-    /\[data-collapsible="offcanvas"\]\[data-side="left"\] > \[data-sidebar="panel"\] \{\s*transform: translateX\(-100%\);\s*opacity: 0;\s*pointer-events: none;\s*visibility: hidden !important;\s*transition:\s*transform 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*opacity 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*visibility 0s linear 720ms !important;\s*\}/,
-  );
-  assert.match(desktop, /\[data-side="left"\] \{\s*anchor-scope: --bb-motion-left-column;\s*\}/);
-  assert.match(
-    desktop,
-    /\[data-side="left"\] > \[data-sidebar="gap"\] \{\s*anchor-name: --bb-motion-left-column;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /\[data-side="left"\]:not\(\[data-collapsible="offcanvas"\]\) \[data-testid\$="-sidebar-resize-handle"\] \{\s*position: fixed !important;\s*position-anchor: --bb-motion-left-column;\s*left: calc\(anchor\(right\) - 6px\) !important;\s*right: auto !important;\s*top: anchor\(top\) !important;\s*bottom: anchor\(bottom\) !important;\s*height: auto !important;\s*\}/,
-  );
-  assert.doesNotMatch(mediaBody(css, "phone"), /sidebar-resize-handle/);
-  assert.doesNotMatch(desktop, /--bb-motion-chat-canvas|--bb-motion-card-face|oklch/);
-  assert.match(desktop, /background-color: var\(--sidebar\) !important/);
-  assert.doesNotMatch(desktop, /\[data-side="left"\] \.bg-sidebar/);
-  assert.match(desktop, /\[data-sidebar="panel"\] > \[data-sidebar="sidebar"\]/);
-  assert.match(desktop, /background-color: color-mix\(in srgb, var\(--sidebar\) 62%, transparent\)/);
-  assert.doesNotMatch(desktop, /background-image: none/);
-  assert.doesNotMatch(desktop, /\.dark \[data-side="left"\] > \[data-sidebar="gap"\]/);
-  assert.match(
-    desktop,
-    /\.dark \[data-side="left"\] > \[data-sidebar="panel"\],\s*\.dark \[data-panel\]:has\(> aside\) > aside \{\s*box-shadow: 0 12px 32px rgb\(0 0 0 \/ 0\.55\);\s*\}/,
-  );
-  assert.match(desktop, /backdrop-filter: blur\(24px\) saturate\(1\.5\)/);
-
-  assert.match(
-    desktop,
-    /\[data-side="left"\]:not\(\[data-collapsible="offcanvas"\]\) \[data-testid\$="-sidebar-resize-handle"\]::before \{\s*content: "";\s*top: 50% !important;\s*right: auto !important;\s*bottom: auto !important;\s*left: 50% !important;\s*width: 4px !important;\s*height: 32px !important;\s*border-radius: 999px;\s*background: var\(--sidebar-foreground\) !important;\s*opacity: 0;\s*transform: translate\(-50%, -50%\) !important;\s*pointer-events: none;\s*transition: opacity 120ms linear;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /\[data-side="left"\]:not\(\[data-collapsible="offcanvas"\]\) \[data-testid\$="-sidebar-resize-handle"\]:hover::before,\s*\[data-side="left"\]:not\(\[data-collapsible="offcanvas"\]\) \[data-testid\$="-sidebar-resize-handle"\]:active::before \{\s*opacity: 1;\s*\}/,
-  );
-  const openLeft =
-    desktop.match(/\[data-side="left"\] > \[data-sidebar="panel"\] \{[^}]*\}/)?.[0] ?? "";
-  assert.doesNotMatch(openLeft, /backdrop-filter/);
-  assert.match(openLeft, /filter: none/);
-  assert.doesNotMatch(mediaBody(css, "phone"), /backdrop-filter/);
-  const rightAside =
-    desktop.match(/\[data-panel\]:has\(> aside\) > aside \{\s*top:[^}]*\}/)?.[0] ?? "";
-  assert.match(
-    rightAside,
-    /top: 10px;\s*bottom: 10px;\s*width: calc\(100% - 20px\) !important;\s*height: auto;\s*margin-left: 10px;\s*border-radius: 20px;\s*corner-shape: squircle;\s*box-shadow: 0 12px 32px rgb\(0 0 0 \/ 0\.16\);\s*z-index: 21;\s*border-left-color: transparent;\s*overflow: clip;/,
-  );
-  assert.doesNotMatch(rightAside, /^\s*(filter|transform|left|right):/m);
-  assert.doesNotMatch(rightAside, /backdrop-filter/);
-  assert.match(
-    desktop,
-    /\[data-panel\]:has\(> aside\) \{\s*overflow: visible !important;\s*transform: none;\s*opacity: 1;\s*transition:\s*flex-grow var\(--panel-collapse-duration, 220ms\) cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*flex-basis var\(--panel-collapse-duration, 220ms\) cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*transform 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*opacity 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\),\s*visibility 0s linear 0s;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /#thread-detail-secondary-panel-handle > \[data-panel-resize-hit-target\]::before \{\s*content: "";\s*position: absolute;\s*top: 50%;\s*left: 50%;\s*width: 4px;\s*height: 32px;\s*border-radius: 999px;\s*background: var\(--sidebar-foreground\);\s*opacity: 0;\s*transform: translate\(-50%, -50%\);\s*pointer-events: none;\s*transition: opacity 120ms linear;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /#thread-detail-secondary-panel-handle \{\s*z-index: 22;\s*background-color: transparent !important;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /#thread-detail-secondary-panel-handle > :not\(\[data-panel-resize-hit-target\]\) \{\s*background-color: transparent !important;\s*opacity: 0 !important;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /#thread-detail-secondary-panel-handle\[data-panel-resize-handle-enabled\] \{\s*width: 16px !important;\s*margin-left: -8px !important;\s*margin-right: -8px !important;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /\.dark \[data-side="left"\]:not\(\[data-collapsible="offcanvas"\]\) \[data-testid\$="-sidebar-resize-handle"\]::before,\s*\.dark #thread-detail-secondary-panel-handle > \[data-panel-resize-hit-target\]::before \{\s*background: var\(--sidebar-border\) !important;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /#thread-detail-secondary-panel-handle:hover > \[data-panel-resize-hit-target\]::before,\s*#thread-detail-secondary-panel-handle:active > \[data-panel-resize-hit-target\]::before,\s*#thread-detail-secondary-panel-handle\[data-resize-handle-state="hover"\] > \[data-panel-resize-hit-target\]::before,\s*#thread-detail-secondary-panel-handle\[data-resize-handle-state="drag"\] > \[data-panel-resize-hit-target\]::before \{\s*opacity: 1;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /@keyframes bb-motion-right-leave \{\s*from \{ transform: translateX\(0\); opacity: 1; \}\s*to \{ transform: translateX\(100%\); opacity: 0; \}\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /@keyframes bb-motion-right-enter \{\s*from \{ transform: translateX\(100%\); opacity: 0; \}\s*to \{ transform: translateX\(0\); opacity: 1; \}\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /\[data-panel\]\[data-bb-motion-right-phase="leave"\]:has\(> aside\) \{\s*position: fixed;\s*top: 0;\s*right: 0;\s*bottom: 0;\s*width: var\(--bb-motion-right-card-width, 32rem\);\s*height: auto;\s*z-index: 21;\s*pointer-events: none;\s*visibility: visible;\s*animation: bb-motion-right-leave 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\) both;\s*\}/,
-  );
-  assert.match(
-    desktop,
-    /\[data-panel\]\[data-bb-motion-right-phase="enter"\]:has\(> aside\) \{\s*animation: bb-motion-right-enter 720ms cubic-bezier\(0\.32, 0\.72, 0, 1\) both;\s*\}/,
-  );
-  assert.doesNotMatch(
-    desktop.match(/\[data-panel\]\[data-bb-motion-right-phase="enter"\]:has\(> aside\) \{[^}]*\}/)?.[0] ?? "",
-    /position:\s*fixed/,
-  );
-  assert.match(
-    desktop,
-    /\[data-panel\]:has\(> aside\[aria-hidden="true"\]\):not\(\[data-bb-motion-right-phase\]\) \{\s*opacity: 0;\s*visibility: hidden;\s*pointer-events: none;\s*\}/,
-  );
-  const reduce = mediaBody(css, "(prefers-reduced-motion: reduce)");
-  assert.match(reduce, /\[data-side="left"\] > \[data-sidebar="panel"\],/);
-  assert.match(
-    reduce,
-    /\[data-collapsible="offcanvas"\]\[data-side="left"\] > \[data-sidebar="panel"\] \{\s*opacity: 0 !important;\s*visibility: hidden !important;\s*pointer-events: none;\s*transition: none !important;\s*\}/,
-  );
-  assert.match(
-    reduce,
-    /\[data-panel\]:has\(> aside\[aria-hidden="true"\]\),\s*\[data-panel\]\[data-bb-motion-right-phase="leave"\]:has\(> aside\) \{\s*opacity: 0 !important;\s*visibility: hidden !important;\s*pointer-events: none;\s*transform: none !important;\s*animation: none !important;\s*transition: none !important;\s*\}/,
-  );
 }
 
 describe("syncSidebarDepth chat screen", () => {
@@ -695,6 +387,7 @@ describe("syncSidebarDepth chat screen", () => {
       querySelector: (selector: string) => (selector === '[data-sidebar="inset"]' ? inset : null),
       querySelectorAll: () => [],
     };
+    writeSidebarChrome(doc as unknown as Document, PHONE_CHROME);
     syncSidebarDepth(doc as unknown as Document);
     assert.equal(inset.dataset.bbMotionScreen, "");
     assert.deepEqual(sent, []);
@@ -1395,33 +1088,16 @@ describe("postSlideHaptic", () => {
 });
 
 describe("sidebarDepthCss", () => {
-  it("keeps phone effects out of narrow desktop and preserves both phone orientations", () => {
+  it("preserves phone effects and keeps them out of desktop", () => {
     for (const orientation of ["portrait", "landscape"] as const) {
       const phone = { ...PHONE_CHROME, orientation };
-      const desktop = { ...phone, device: "desktop" } as const;
-      assert.match(sidebarDepthCss(true, phone), /bb-sidebar-phone-shelf \*\/\s*@media all/);
-      assert.match(sidebarDepthCss(true, desktop), /bb-sidebar-phone-shelf \*\/\s*@media not all/);
-      assert.match(sidebarDepthCss(true, desktop), /bb-sidebar-desktop-card \*\/\s*@media not all/);
-      assert.doesNotMatch(sidebarDepthCss(true, desktop), /font-size|line-height|min-height|padding:/);
+      const css = sidebarDepthCss(phone);
+      assert.match(css, /bb-sidebar-phone-shelf \*\/\s*@media all/);
+      assertPhoneStyles(css);
+      assert.equal(sidebarDepthCss({ ...phone, device: "desktop" }), "");
     }
     const landscape = { ...PHONE_CHROME, orientation: "landscape", viewport: "medium" } as const;
-    assert.match(sidebarDepthCss(true, landscape), /bb-sidebar-phone-shelf \*\/\s*@media not all/);
-    assert.match(sidebarDepthCss(true, landscape), /bb-sidebar-desktop-card \*\/\s*@media not all/);
-  });
-  it("keeps the narrow-screen drawer and drops the desktop card when the layout is off", () => {
-    const off = sidebarDepthCss(false);
-    assert.doesNotMatch(off, /bb-sidebar-desktop-card/);
-    assert.doesNotMatch(off, /--bb-motion-card-face/);
-    assert.doesNotMatch(off, /offcanvas/);
-    assert.doesNotMatch(off, /bb-motion-right-phase/);
-    assert.match(off, /\/\* bb-sidebar-phone-shelf \*\/\s*@media (?:not )?all/);
-    assert.match(
-      off,
-      /@media \(prefers-reduced-motion: reduce\) \{\s*\[data-sidebar="gap"\],\s*\[data-sidebar="panel"\],\s*\[data-panel\] > aside,\s*\[data-testid="secondary-panel-shelf"\],\s*\[data-sidebar="inset"\]\[data-bb-motion-chat-dim\] \{/,
-    );
-    assert.match(sidebarDepthCss(true), /bb-sidebar-desktop-card \*\/\s*@media all/);
-    assert.doesNotMatch(sidebarDepthCss(true), /min-width|max-width|pointer: fine/);
-    assert.match(sidebarDepthCss(true), /color-mix\(in srgb, var\(--sidebar\) 62%, transparent\)/);
+    assert.match(sidebarDepthCss(landscape), /bb-sidebar-phone-shelf \*\/\s*@media not all/);
   });
 });
 

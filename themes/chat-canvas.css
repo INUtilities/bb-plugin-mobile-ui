@@ -1,9 +1,0 @@
-:root, .light {
-  --canvas: oklch(0.95 0 0);
-  --sidebar: oklch(0.93 0 0);
-}
-
-.dark {
-  --canvas: oklch(0.15 0 0);
-  --sidebar: oklch(0.18 0 0);
-}

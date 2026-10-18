@@ -17,10 +17,6 @@ export function usesPhoneShelf(chrome: SidebarChrome): boolean {
   return chrome.device === "phone" && chrome.viewport === "narrow";
 }
 
-export function usesDesktopCard(chrome: SidebarChrome): boolean {
-  return chrome.device === "desktop" && chrome.viewport !== "narrow";
-}
-
 export function readSidebarChrome(doc: Document): SidebarChrome {
   return chromeByDocument.get(doc) ?? DEFAULT_SIDEBAR_CHROME;
 }

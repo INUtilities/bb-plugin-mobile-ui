@@ -3,7 +3,6 @@ import {
   DEFAULT_SIDEBAR_CHROME,
   clearSidebarChrome,
   readSidebarChrome,
-  usesDesktopCard,
   usesPhoneShelf,
   writeSidebarChrome,
   type SidebarChrome,
@@ -107,224 +106,9 @@ ${RIGHT_SHELF}[data-state="closed"] {
     transform: translateX(calc(var(--bb-motion-chat-dim) * 50%));
   }
 }
-/* bb-sidebar-desktop-card */
-@media --bb-sidebar-desktop {
-  [data-side="left"] > [data-sidebar="panel"] {
-    top: 10px;
-    bottom: 10px;
-    left: 10px !important;
-    width: calc(var(--sidebar-width) - 20px);
-    height: auto;
-    border-radius: 20px;
-    corner-shape: squircle;
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.16);
-    border-right-color: transparent;
-    overflow: clip;
-    filter: none;
-    transform: none;
-    opacity: 1;
-    z-index: 21;
-    transition:
-      transform ${SLIDE_MS}ms ${SLIDE_EASE},
-      opacity ${SLIDE_MS}ms ${SLIDE_EASE},
-      visibility 0s linear 0s !important;
-  }
-  [data-collapsible="offcanvas"][data-side="left"] > [data-sidebar="panel"] {
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
-    visibility: hidden !important;
-    transition:
-      transform ${SLIDE_MS}ms ${SLIDE_EASE},
-      opacity ${SLIDE_MS}ms ${SLIDE_EASE},
-      visibility 0s linear ${SLIDE_MS}ms !important;
-  }
-  [data-side="left"] {
-    anchor-scope: --bb-motion-left-column;
-  }
-  [data-side="left"] > [data-sidebar="gap"] {
-    anchor-name: --bb-motion-left-column;
-  }
-  [data-side="left"]:not([data-collapsible="offcanvas"]) [data-testid$="-sidebar-resize-handle"] {
-    position: fixed !important;
-    position-anchor: --bb-motion-left-column;
-    left: calc(anchor(right) - 6px) !important;
-    right: auto !important;
-    top: anchor(top) !important;
-    bottom: anchor(bottom) !important;
-    height: auto !important;
-  }
-  [data-side="left"]:not([data-collapsible="offcanvas"]) [data-testid$="-sidebar-resize-handle"]::before {
-    content: "";
-    top: 50% !important;
-    right: auto !important;
-    bottom: auto !important;
-    left: 50% !important;
-    width: 4px !important;
-    height: 32px !important;
-    border-radius: 999px;
-    background: var(--sidebar-foreground) !important;
-    opacity: 0;
-    transform: translate(-50%, -50%) !important;
-    pointer-events: none;
-    transition: opacity 120ms linear;
-  }
-  [data-side="left"]:not([data-collapsible="offcanvas"]) [data-testid$="-sidebar-resize-handle"]:hover::before,
-  [data-side="left"]:not([data-collapsible="offcanvas"]) [data-testid$="-sidebar-resize-handle"]:active::before {
-    opacity: 1;
-  }
-  /* The gutter and card share the host sidebar tone. Only the shell is cleared;
-     nested surfaces (tabs, sticky headers, plugin content) own their paint. */
-  [data-side="left"] > [data-sidebar="gap"],
-  [data-panel]:has(> aside) {
-    background-color: var(--sidebar) !important;
-  }
-  [data-side="left"] > [data-sidebar="panel"],
-  [data-side="left"] > [data-sidebar="panel"] > [data-sidebar="sidebar"],
-  [data-panel]:has(> aside) > aside {
-    background-color: transparent !important;
-  }
-  [data-side="left"] > [data-sidebar="panel"]::before,
-  [data-panel]:has(> aside) > aside::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    pointer-events: none;
-    background-color: color-mix(in srgb, var(--sidebar) 62%, transparent);
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  }
-  [data-panel]:has(> aside) > aside {
-    top: 10px;
-    bottom: 10px;
-    width: calc(100% - 20px) !important;
-    height: auto;
-    margin-left: 10px;
-    border-radius: 20px;
-    corner-shape: squircle;
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.16);
-    z-index: 21;
-    border-left-color: transparent;
-    overflow: clip;
-  }
-  .dark [data-side="left"] > [data-sidebar="panel"],
-  .dark [data-panel]:has(> aside) > aside {
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
-  }
-  [data-panel]:has(> aside) {
-    overflow: visible !important;
-    transform: none;
-    opacity: 1;
-    transition:
-      flex-grow var(--panel-collapse-duration, 220ms) ${SLIDE_EASE},
-      flex-basis var(--panel-collapse-duration, 220ms) ${SLIDE_EASE},
-      transform ${SLIDE_MS}ms ${SLIDE_EASE},
-      opacity ${SLIDE_MS}ms ${SLIDE_EASE},
-      visibility 0s linear 0s;
-  }
-  #thread-detail-secondary-panel-handle {
-    z-index: 22;
-    background-color: transparent !important;
-  }
-  #thread-detail-secondary-panel-handle[data-panel-resize-handle-enabled] {
-    width: 16px !important;
-    margin-left: -8px !important;
-    margin-right: -8px !important;
-  }
-  .dark [data-side="left"]:not([data-collapsible="offcanvas"]) [data-testid$="-sidebar-resize-handle"]::before,
-  .dark #thread-detail-secondary-panel-handle > [data-panel-resize-hit-target]::before {
-    background: var(--sidebar-border) !important;
-  }
-  #thread-detail-secondary-panel-handle > :not([data-panel-resize-hit-target]) {
-    background-color: transparent !important;
-    opacity: 0 !important;
-  }
-  #thread-detail-secondary-panel-handle > [data-panel-resize-hit-target]::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 4px;
-    height: 32px;
-    border-radius: 999px;
-    background: var(--sidebar-foreground);
-    opacity: 0;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    transition: opacity 120ms linear;
-  }
-  #thread-detail-secondary-panel-handle:hover > [data-panel-resize-hit-target]::before,
-  #thread-detail-secondary-panel-handle:active > [data-panel-resize-hit-target]::before,
-  #thread-detail-secondary-panel-handle[data-resize-handle-state="hover"] > [data-panel-resize-hit-target]::before,
-  #thread-detail-secondary-panel-handle[data-resize-handle-state="drag"] > [data-panel-resize-hit-target]::before {
-    opacity: 1;
-  }
-  @keyframes bb-motion-right-leave {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-  }
-  @keyframes bb-motion-right-enter {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  [data-panel][data-bb-motion-right-phase="leave"]:has(> aside) {
-    position: fixed;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: var(--bb-motion-right-card-width, 32rem);
-    height: auto;
-    z-index: 21;
-    pointer-events: none;
-    visibility: visible;
-    animation: bb-motion-right-leave ${SLIDE_MS}ms ${SLIDE_EASE} both;
-  }
-  [data-panel][data-bb-motion-right-phase="enter"]:has(> aside) {
-    animation: bb-motion-right-enter ${SLIDE_MS}ms ${SLIDE_EASE} both;
-  }
-  [data-panel]:has(> aside[aria-hidden="true"]):not([data-bb-motion-right-phase]) {
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   [data-sidebar="gap"],
   [data-sidebar="panel"],
-  [data-side="left"] > [data-sidebar="panel"],
-  [data-panel]:has(> aside),
-  ${RIGHT_PANEL},
-  ${RIGHT_SHELF},
-  [data-sidebar="inset"][data-bb-motion-chat-dim] {
-    filter: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-    transition: none !important;
-  }
-  [data-collapsible="offcanvas"][data-side="left"] > [data-sidebar="panel"] {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none;
-    transition: none !important;
-  }
-  [data-panel]:has(> aside[aria-hidden="true"]),
-  [data-panel][data-bb-motion-right-phase="leave"]:has(> aside) {
-    opacity: 0 !important;
-    visibility: hidden !important;
-    pointer-events: none;
-    transform: none !important;
-    animation: none !important;
-    transition: none !important;
-  }
-}
-`;
-
-const DESKTOP_MEDIA = "/* bb-sidebar-desktop-card */";
-const LEGACY_REDUCED_CSS = `@media (prefers-reduced-motion: reduce) {
-  [data-sidebar="gap"],
-  [data-sidebar="panel"],
   ${RIGHT_PANEL},
   ${RIGHT_SHELF},
   [data-sidebar="inset"][data-bb-motion-chat-dim] {
@@ -336,35 +120,16 @@ const LEGACY_REDUCED_CSS = `@media (prefers-reduced-motion: reduce) {
 }
 `;
 
-let desktopCardLayout = true;
-
-export function setDesktopCardLayout(enabled: boolean): void {
-  desktopCardLayout = enabled;
-}
-
-export function sidebarDepthCss(desktopLayout: boolean, chrome: SidebarChrome = DEFAULT_SIDEBAR_CHROME): string {
-  const css = SIDEBAR_DEPTH_CSS
-    .replace("@media --bb-sidebar-phone", usesPhoneShelf(chrome) ? "@media all" : "@media not all")
-    .replace("@media --bb-sidebar-desktop", usesDesktopCard(chrome) ? "@media all" : "@media not all");
-  if (desktopLayout) return css;
-  const start = css.indexOf(DESKTOP_MEDIA);
-  return `${css.slice(0, start)}${LEGACY_REDUCED_CSS}`;
+export function sidebarDepthCss(chrome: SidebarChrome = DEFAULT_SIDEBAR_CHROME): string {
+  if (chrome.device !== "phone") return "";
+  return SIDEBAR_DEPTH_CSS.replace(
+    "@media --bb-sidebar-phone",
+    usesPhoneShelf(chrome) ? "@media all" : "@media not all",
+  );
 }
 
 export function keepWatchingSlide(idleMs: number): boolean {
   return idleMs < SLIDE_MS;
-}
-
-export function tracksSlideGeometry(element: {
-  getAttribute?: (name: string) => string | null;
-  matches?: (selector: string) => boolean;
-}, chrome: SidebarChrome = DEFAULT_SIDEBAR_CHROME): boolean {
-  if (chrome.device !== "phone") {
-    return !desktopCardLayout || !usesDesktopCard(chrome);
-  }
-  if (element.matches?.(RIGHT_SHELF) === true) return true;
-  if (element.getAttribute?.("data-vaul-drawer-direction") != null) return true;
-  return !desktopCardLayout;
 }
 
 export function sidebarDepthProgress(box: { left: number; width: number }): number {
@@ -754,49 +519,6 @@ export function applyRightDepth(panel: HTMLElement, progress: number, pin: boole
   else delete panel.dataset[RIGHT_SETTLED];
 }
 
-const RIGHT_WAS = "bbMotionRightWas";
-const RIGHT_PHASE = "bbMotionRightPhase";
-const rightSlideToken = new WeakMap<object, number>();
-
-function rememberRightCardWidth(aside: HTMLElement): void {
-  if (aside.getAttribute?.("aria-hidden") === "true") return;
-  const parent = aside.parentElement;
-  const width = parent?.getBoundingClientRect?.().width ?? 0;
-  if (parent === null || width <= 0) return;
-  parent.style?.setProperty?.("--bb-motion-right-card-width", `${Math.round(width)}px`);
-}
-
-function clearRightCardSlide(aside: HTMLElement): void {
-  const parent = aside.parentElement;
-  if (parent?.dataset === undefined) return;
-  delete parent.dataset[RIGHT_WAS];
-  delete parent.dataset[RIGHT_PHASE];
-  parent.style?.removeProperty?.("--bb-motion-right-card-width");
-}
-
-function clearRightCardSlides(doc: Document): void {
-  if (typeof doc.querySelectorAll !== "function") return;
-  doc.querySelectorAll<HTMLElement>(RIGHT_PANEL).forEach(clearRightCardSlide);
-}
-
-function syncRightSlide(aside: HTMLElement): void {
-  const parent = aside.parentElement;
-  if (parent?.dataset === undefined) return;
-  const hidden = aside.getAttribute?.("aria-hidden") === "true";
-  const next = hidden ? "hidden" : "open";
-  const previous = parent.dataset[RIGHT_WAS];
-  parent.dataset[RIGHT_WAS] = next;
-  if (previous === undefined || previous === next) return;
-  const phase = hidden ? "leave" : "enter";
-  parent.dataset[RIGHT_PHASE] = phase;
-  const token = (rightSlideToken.get(parent) ?? 0) + 1;
-  rightSlideToken.set(parent, token);
-  aside.ownerDocument?.defaultView?.setTimeout(() => {
-    if (rightSlideToken.get(parent) !== token) return;
-    if (parent.dataset[RIGHT_PHASE] === phase) delete parent.dataset[RIGHT_PHASE];
-  }, SLIDE_MS);
-}
-
 export function readRightDepth(aside: HTMLElement): number {
   const clip = aside.parentElement?.getBoundingClientRect();
   if (clip === undefined) return 1;
@@ -818,9 +540,8 @@ export function readRightShelfDepth(doc: Document, shelf: HTMLElement): number {
 
 export function syncSidebarDepth(doc: Document): number {
   const chrome = readSidebarChrome(doc);
-  const desktopCard = desktopCardLayout && usesDesktopCard(chrome);
+  if (chrome.device !== "phone") return 0;
   syncChatScreen(doc);
-  if (!desktopCard) clearRightCardSlides(doc);
   if (prefersReducedMotion(doc)) return 0;
   let count = 0;
   doc.querySelectorAll<HTMLElement>('[data-sidebar="panel"]').forEach((panel) => {
@@ -833,9 +554,6 @@ export function syncSidebarDepth(doc: Document): number {
     else delete aside.dataset[RIGHT_PIN];
     applyRightDepth(aside, readRightDepth(aside), pin);
     count += 1;
-    if (!desktopCard) return;
-    rememberRightCardWidth(aside);
-    syncRightSlide(aside);
   });
   let shelfProgress = 0;
   doc.querySelectorAll<HTMLElement>(RIGHT_SHELF).forEach((shelf) => {
@@ -866,10 +584,9 @@ export function injectSidebarDepth(
   const apply = (): void => {
     stopTrack();
     stopTrack = () => {};
-    setDesktopCardLayout(false);
     const chrome = readSidebarChrome(doc);
     // 위치 기반 밝기·스와이프 모션은 phone 전용이다. desktop에서 폭을 매 프레임 읽지 않는다.
-    style.textContent = chrome.device === "phone" ? sidebarDepthCss(false, chrome) : "";
+    style.textContent = sidebarDepthCss(chrome);
     if (chrome.device === "phone") {
       syncSidebarDepth(doc);
       stopTrack = trackSidebarDepth(doc);
@@ -1080,19 +797,12 @@ function clearChatScreen(doc: Document): void {
 function snapshot(doc: Document): string {
   const left = Array.from(doc.querySelectorAll<HTMLElement>('[data-sidebar="panel"]'))
     .map((panel) => {
-      if (!tracksSlideGeometry(panel, readSidebarChrome(doc))) {
-        const shell = panel.parentElement;
-        return `${shell?.getAttribute("data-collapsible") ?? ""}:${shell?.getAttribute("data-state") ?? ""}`;
-      }
       const box = panel.getBoundingClientRect();
       return `${box.left}:${box.width}:${readSidebarDepth(doc, panel).toFixed(3)}`;
     })
     .join("|");
   const right = Array.from(doc.querySelectorAll<HTMLElement>(`${RIGHT_PANEL}, ${RIGHT_SHELF}`))
     .map((panel) => {
-      if (!tracksSlideGeometry(panel, readSidebarChrome(doc))) {
-        return `${panel.getAttribute("aria-hidden") ?? ""}:${panel.parentElement?.getAttribute("data-bb-motion-right-phase") ?? ""}`;
-      }
       const box = panel.getBoundingClientRect();
       const depth = readSidebarChrome(doc).device === "phone" && panel.matches(RIGHT_SHELF)
         ? readRightShelfDepth(doc, panel)

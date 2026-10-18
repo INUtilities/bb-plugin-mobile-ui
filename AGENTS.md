@@ -53,4 +53,5 @@
 - plugin id: `sidebar`
 - 확인 명령: `npm test`, `npm run typecheck`
 - 제품 계약은 `skills/sidebar/SKILL.md`를 따른다.
-- 카드·사이드바·phone 동작과 Multipanes가 없을 때의 활성 페인 강조를 소유한다. 저장 배치·플레이스홀더는 Multipanes 소유다.
+- 표시 이름은 `Mobile UI`이며 기존 설치 호환을 위해 package name `bb-plugin-sidebar`와 plugin id `sidebar`를 유지한다.
+- phone 패널 모션·화면 효과·햅틱만 소유한다. desktop·tablet 꾸밈과 전역 테마는 등록하지 않는다.
