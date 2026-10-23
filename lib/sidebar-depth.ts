@@ -74,16 +74,18 @@ ${RIGHT_SHELF}[data-state="closed"] {
 }
 /* bb-sidebar-phone-shelf */
 @media --bb-sidebar-phone {
-  [data-sidebar="inset"][data-bb-motion-screen] {
+  [data-sidebar="inset"][data-bb-motion-screen="left"] {
     border-radius: 55px;
     overflow: clip;
     box-shadow: -12px 0 24px rgb(0 0 0 / 0.10);
   }
+  /* The portaled shelf sits above the inset (40 > 30), including during drag. */
+  [data-sidebar="inset"][data-bb-motion-screen="right"],
   [data-sidebar="inset"][data-panel-shelf="shelf"],
   [data-sidebar="inset"][data-panel-shelf="full"] {
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    box-shadow: 67px 0 0 0 var(--background);
+    border-radius: 0;
+    overflow: visible;
+    box-shadow: none;
   }
   [data-sidebar="panel"][data-vaul-drawer-direction="left"] {
     border-right-color: transparent;
@@ -97,6 +99,7 @@ ${RIGHT_SHELF}[data-state="closed"] {
     corner-shape: squircle;
     border-left-color: transparent;
     overflow: clip;
+    box-shadow: -12px 0 24px color-mix(in oklab, var(--foreground) 10%, transparent);
   }
   [data-testid="secondary-panel-shelf"]:not([data-bb-motion-settled]) {
     transform: translateX(calc((1 - min(var(${RIGHT_DEPTH_VAR}), 0.75) / 0.75) * 100%));
@@ -430,9 +433,9 @@ export function applyChatScreen(inset: HTMLElement, translateX: number): "push" 
   const wasOn = inset.dataset[SCREEN] !== undefined;
   const shelf = inset.getAttribute("data-sidebar-shelf");
   const panelShelf = inset.getAttribute("data-panel-shelf");
-  const heldOpen = shelf === "open" || panelShelf === "shelf" || panelShelf === "full";
-  const on = heldOpen || Math.abs(translateX) > SCREEN_MOVE_PX;
-  if (on) inset.dataset[SCREEN] = "";
+  const side = readSidebarSide({ translateX, sidebarShelf: shelf, panelShelf });
+  const on = side !== "rest";
+  if (on) inset.dataset[SCREEN] = side;
   else delete inset.dataset[SCREEN];
   return on && !wasOn ? "push" : null;
 }
