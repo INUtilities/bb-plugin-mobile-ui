@@ -1099,7 +1099,7 @@ function asElement(target: EventTarget | null): Element | null {
   return target as Element;
 }
 
-function readNativeBridge(doc: Document): {
+export function readNativeBridge(doc: Document): {
   post?: (message: unknown) => void;
   capabilities?: readonly string[];
 } | null {
