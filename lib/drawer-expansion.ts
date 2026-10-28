@@ -37,6 +37,8 @@ type Sheet = {
   top: number;
   height: number;
   expandedHeight: number;
+  overdrag: number;
+  stretch: number;
   distance: number;
   expanded: boolean;
   progress: number;
@@ -72,7 +74,10 @@ export function injectDrawerExpansion(doc: Document): () => void {
     const p = Math.max(0, Math.min(1, progress));
     sheet.progress = p;
     sheet.drawer.setAttribute(STAGE, sheet.expanded ? "expanded" : "dragging");
-    const values = [8 * (1 - p), sheet.height + (sheet.expandedHeight - sheet.height) * p, 8 * (1 - p), 30 * (1 - p), offset];
+    const extraHeight = Math.min(sheet.overdrag, Math.max(0, -offset));
+    sheet.stretch = extraHeight;
+    const values = [8 * (1 - p), sheet.height + (sheet.expandedHeight - sheet.height) * p + extraHeight,
+      8 * (1 - p), 30 * (1 - p), Math.max(0, offset)];
     values.forEach((value, index) => sheet.drawer.style.setProperty(VARS[index]!, `${value}px`));
   };
   const settle = (sheet: Sheet, expanded: boolean) => {
@@ -119,6 +124,7 @@ export function injectDrawerExpansion(doc: Document): () => void {
       });
       sheet = { drawer, top: rect.top, height: rect.height,
         expandedHeight: rect.bottom + 8 - expandedTop, distance: Math.max(48, rect.top - expandedTop),
+        overdrag: Math.max(0, expandedTop - (view.visualViewport?.offsetTop ?? 0)), stretch: 0,
         expanded: false, progress: 0, timer: 0, observer };
       sheets.set(drawer, sheet);
       observer.observe(drawer, { attributes: true, attributeFilter: ["data-state"] });
@@ -127,15 +133,18 @@ export function injectDrawerExpansion(doc: Document): () => void {
     view.clearTimeout(sheet.timer);
     if (sheet.drawer.hasAttribute(SETTLING)) {
       const visibleInset = Number.parseFloat(view.getComputedStyle(sheet.drawer).left);
+      const visibleHeight = sheet.drawer.getBoundingClientRect().height;
+      const progress = Number.isFinite(visibleInset) ? 1 - visibleInset / 8 : sheet.progress;
+      const restingHeight = sheet.height + (sheet.expandedHeight - sheet.height) * progress;
       sheet.drawer.removeAttribute(SETTLING);
-      render(sheet, Number.isFinite(visibleInset) ? 1 - visibleInset / 8 : sheet.progress);
+      render(sheet, progress, -Math.max(0, visibleHeight - restingHeight));
     }
     sheet.drawer.removeAttribute(SETTLING);
     drag = { sheet, handle, id: event.pointerId, y0: event.clientY,
-      top0: sheet.top - sheet.distance * sheet.progress,
+      top0: sheet.top - sheet.distance * sheet.progress - sheet.stretch,
       expanded: sheet.expanded, own: sheet.expanded || sheet.progress > 0,
       y: event.clientY, time: view.performance.now(), velocity: 0,
-      top: sheet.top - sheet.distance * sheet.progress };
+      top: sheet.top - sheet.distance * sheet.progress - sheet.stretch };
   };
   const move = (event: PointerEvent) => {
     const current = drag;
@@ -148,7 +157,9 @@ export function injectDrawerExpansion(doc: Document): () => void {
     event.preventDefault(); event.stopPropagation();
     current.top = current.top0 + event.clientY - current.y0;
     const sheet = current.sheet;
-    render(sheet, (sheet.top - current.top) / sheet.distance, Math.max(0, current.top - sheet.top));
+    const pastMaximum = current.top - (sheet.top - sheet.distance);
+    render(sheet, (sheet.top - current.top) / sheet.distance,
+      pastMaximum < 0 ? pastMaximum : Math.max(0, current.top - sheet.top));
   };
   const end = (event: PointerEvent) => {
     if (forwardingCancel) return;
@@ -163,7 +174,8 @@ export function injectDrawerExpansion(doc: Document): () => void {
     event.preventDefault(); event.stopPropagation();
     cancelNative(current);
     const projected = current.top + current.velocity * 140;
-    settle(sheet, cancelled ? current.expanded : projected < sheet.top - sheet.distance / 2);
+    const aboveMaximum = current.top < sheet.top - sheet.distance;
+    settle(sheet, cancelled ? current.expanded : aboveMaximum || projected < sheet.top - sheet.distance / 2);
   };
   const reset = () => {
     if (drag?.own) cancelNative(drag);
