@@ -480,10 +480,10 @@ export function applySidebarDepth(panel: HTMLElement, progress: number): void {
   else delete panel.dataset[PARKED];
 }
 
-export function readSidebarDepth(doc: Document, panel: HTMLElement): number {
+export function readSidebarDepth(doc: Document, panel: HTMLElement, box = panel.getBoundingClientRect()): number {
   if (readSidebarChrome(doc).device === "phone" && panel.getAttribute("data-vaul-drawer-direction") !== null) {
     const inset = doc.querySelector<HTMLElement>('[data-sidebar="inset"]');
-    const width = panel.getBoundingClientRect().width;
+    const width = box.width;
     if (inset === null) {
       return panel.getAttribute("data-state") === "open" ? 1 : 0;
     }
@@ -493,7 +493,7 @@ export function readSidebarDepth(doc: Document, panel: HTMLElement): number {
     };
     return mobileShelfProgress(readTranslateX(style), width);
   }
-  return sidebarDepthProgress(panel.getBoundingClientRect());
+  return sidebarDepthProgress(box);
 }
 
 export function applyChatDim(inset: HTMLElement, progress: number): void {
@@ -522,15 +522,15 @@ export function applyRightDepth(panel: HTMLElement, progress: number, pin: boole
   else delete panel.dataset[RIGHT_SETTLED];
 }
 
-export function readRightDepth(aside: HTMLElement): number {
+export function readRightDepth(aside: HTMLElement, box?: DOMRect): number {
   const clip = aside.parentElement?.getBoundingClientRect();
   if (clip === undefined) return 1;
-  return rightPanelDepthProgress(aside.getBoundingClientRect(), clip);
+  return rightPanelDepthProgress(box ?? aside.getBoundingClientRect(), clip);
 }
 
-export function readRightShelfDepth(doc: Document, shelf: HTMLElement): number {
+export function readRightShelfDepth(doc: Document, shelf: HTMLElement, box?: DOMRect): number {
   const inset = doc.querySelector<HTMLElement>('[data-sidebar="inset"]');
-  const width = shelf.getBoundingClientRect().width;
+  const width = (box ?? shelf.getBoundingClientRect()).width;
   if (inset === null || width <= 0) {
     return shelf.getAttribute("data-state") === "closed" ? 0 : 1;
   }
@@ -801,15 +801,15 @@ function snapshot(doc: Document): string {
   const left = Array.from(doc.querySelectorAll<HTMLElement>('[data-sidebar="panel"]'))
     .map((panel) => {
       const box = panel.getBoundingClientRect();
-      return `${box.left}:${box.width}:${readSidebarDepth(doc, panel).toFixed(3)}`;
+      return `${box.left}:${box.width}:${readSidebarDepth(doc, panel, box).toFixed(3)}`;
     })
     .join("|");
   const right = Array.from(doc.querySelectorAll<HTMLElement>(`${RIGHT_PANEL}, ${RIGHT_SHELF}`))
     .map((panel) => {
       const box = panel.getBoundingClientRect();
       const depth = readSidebarChrome(doc).device === "phone" && panel.matches(RIGHT_SHELF)
-        ? readRightShelfDepth(doc, panel)
-        : readRightDepth(panel);
+        ? readRightShelfDepth(doc, panel, box)
+        : readRightDepth(panel, box);
       return `${box.left}:${box.width}:${depth.toFixed(3)}`;
     })
     .join("|");
