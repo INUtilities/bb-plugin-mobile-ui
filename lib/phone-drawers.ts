@@ -1,5 +1,6 @@
 import { readSidebarChrome, SIDEBAR_CHROME_EVENT } from "./sidebar-chrome.ts";
 import { postSlideHaptic, readNativeBridge } from "./sidebar-depth.ts";
+import { DRAWER_EXPANSION_CSS, injectDrawerExpansion } from "./drawer-expansion.ts";
 
 // Defer only while Chat UI's phone bridge is active; new-thread pages may have no bridge.
 export const PHONE_DRAWER_SELECTOR = `[data-persistent-drawer-content]:not(
@@ -55,12 +56,14 @@ ${DRAWER} > [data-persistent-drawer-handle] > div {
   background: ${GRAB} !important;
 }
 ${PHONE} [data-persistent-drawer-backdrop] { background: transparent !important; }
+${DRAWER_EXPANSION_CSS}
 `;
 
 /** Style only the shared host primitive. Native layout, focus and gestures own its DOM. */
 export function injectPhoneDrawers(doc: Document): () => void {
   const view = doc.defaultView;
   if (!view) return () => {};
+  const stopExpansion = injectDrawerExpansion(doc);
   let style: HTMLStyleElement | null = null;
   let lastHandleAt = -Infinity;
   const onHandlePress = (event: PointerEvent) => {
@@ -88,6 +91,7 @@ export function injectPhoneDrawers(doc: Document): () => void {
   view.addEventListener(SIDEBAR_CHROME_EVENT, sync);
   doc.addEventListener("pointerdown", onHandlePress, true);
   return () => {
+    stopExpansion();
     view.removeEventListener(SIDEBAR_CHROME_EVENT, sync);
     doc.removeEventListener("pointerdown", onHandlePress, true);
     style?.remove();
