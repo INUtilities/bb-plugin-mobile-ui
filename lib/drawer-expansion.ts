@@ -85,7 +85,9 @@ export function injectDrawerExpansion(doc: Document): () => void {
     sheet.expanded = expanded;
     if (!reduced()) sheet.drawer.setAttribute(SETTLING, "");
     render(sheet, expanded ? 1 : 0);
-    if (changed) postSlideHaptic(readNativeBridge(doc));
+    if (changed && sheet.drawer.getAttribute("data-bb-mobile-sheet-settle-haptic") !== "off") {
+      postSlideHaptic(readNativeBridge(doc));
+    }
     const done = () => { sheet.drawer.removeAttribute(SETTLING); if (!expanded) clear(sheet); };
     if (reduced()) done();
     else sheet.timer = view.setTimeout(done, 340);
